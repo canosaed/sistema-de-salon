@@ -20,13 +20,15 @@ import {
   X,
 } from 'lucide-react'
 
-const appointments = [
+const initialAppointments = [
   { time: '09:00', client: 'Sofía Martínez', service: 'Esmaltado semipermanente', professional: 'Valentina R.', status: 'Confirmado', color: 'bg-[#e4c3b7]' },
   { time: '10:30', client: 'Camila Torres', service: 'Lifting de pestañas', professional: 'Lucía M.', status: 'Pendiente', color: 'bg-[#d8c8e8]' },
   { time: '12:00', client: 'Julieta Acosta', service: 'Soft gel + nail art', professional: 'Valentina R.', status: 'Confirmado', color: 'bg-[#bfd8d2]' },
-  { time: '15:30', client: 'Martina López', service: 'Pedicuría tradicional', professional: 'Agustina P.', status: 'Pendiente', color: 'bg-[#ead5a8]' },
-  { time: '17:00', client: 'Renata Gómez', service: 'Extensiones clásicas', professional: 'Lucía M.', status: 'Confirmado', color: 'bg-[#e4c3b7]' },
+  { time: '15:30', client: 'Marina López', service: 'Pedicuría tradicional', professional: 'Agustina P.', status: 'Pendiente', color: 'bg-[#ead5a8]' },
 ]
+
+type Appointment = (typeof initialAppointments)[number]
+
 
 const services = [
   { name: 'Esmaltado semipermanente', category: 'Manos y uñas', duration: '1h 15m', price: '$18.500', tone: 'bg-[#e4c3b7]' },
@@ -45,7 +47,30 @@ function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Cal
 export default function DashboardShell() {
   const [active, setActive] = useState('Resumen')
   const [showNew, setShowNew] = useState(false)
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
+  const [appointmentForm, setAppointmentForm] = useState({ client: '', service: '', date: '2024-08-14', time: '10:30', professional: '' })
+  const [appointmentError, setAppointmentError] = useState('')
+  const [appointmentSaved, setAppointmentSaved] = useState(false)
   const [query, setQuery] = useState('')
+
+  function updateAppointmentForm(field: keyof typeof appointmentForm, value: string) {
+    setAppointmentForm((current) => ({ ...current, [field]: value }))
+    setAppointmentError('')
+    setAppointmentSaved(false)
+  }
+
+  function saveAppointment() {
+    if (!appointmentForm.client || !appointmentForm.service || !appointmentForm.professional) {
+      setAppointmentError('Completá cliente, servicio y profesional para guardar el turno.')
+      return
+    }
+
+    const color = appointmentForm.service.includes('Lifting') ? 'bg-[#d8c8e8]' : appointmentForm.service.includes('Pedicuría') ? 'bg-[#ead5a8]' : 'bg-[#bfd8d2]'
+    setAppointments((current) => [...current, { time: appointmentForm.time, client: appointmentForm.client, service: appointmentForm.service.split(' · ')[0], professional: appointmentForm.professional, status: 'Pendiente', color }])
+    setAppointmentSaved(true)
+    setAppointmentForm({ client: '', service: '', date: '2024-08-14', time: '10:30', professional: '' })
+    window.setTimeout(() => { setShowNew(false); setAppointmentSaved(false) }, 700)
+  }
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
   const nav = [
     { label: 'Resumen', icon: LayoutDashboard },
@@ -77,6 +102,6 @@ export default function DashboardShell() {
         {active === 'Profesionales' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Equipo</p><h2>Profesionales</h2><p>3 profesionales activas</p></div><button className="primary-button"><Plus size={18} />Agregar profesional</button></div><div className="professional-list">{[['Valentina R.','Manicuría y uñas','VR','8 turnos hoy'],['Lucía M.','Pestañas y cejas','LM','6 turnos hoy'],['Agustina P.','Pedicuría','AP','4 turnos hoy']].map(([name, specialty, initials, appointments]) => <div className="professional-row" key={name}><div className="professional-avatar">{initials}</div><div><b>{name}</b><span>{specialty}</span></div><span className="availability"><i />Disponible</span><strong>{appointments}</strong><button className="more-button"><MoreHorizontal size={17} /></button></div>)}</div></section>}
       </div>
     </section>
-    {showNew && <div className="modal-backdrop" onClick={() => setShowNew(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Agenda</p><h2 id="new-title">Nuevo turno</h2></div><button className="icon-button" onClick={() => setShowNew(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Cliente<input placeholder="Buscar o seleccionar cliente" /></label><label>Servicio<select defaultValue=""><option value="" disabled>Elegir servicio</option><option>Esmaltado semipermanente · $18.500</option><option>Soft gel · $27.000</option><option>Lifting de pestañas · $22.000</option></select></label><div className="form-row"><label>Fecha<input type="date" defaultValue="2024-08-14" /></label><label>Hora<select defaultValue="10:30"><option>09:00</option><option>10:30</option><option>12:00</option><option>15:30</option></select></label></div><label>Profesional<select defaultValue=""><option value="" disabled>Asignar profesional</option><option>Valentina R.</option><option>Lucía M.</option><option>Agustina P.</option></select></label><div className="modal-foot"><button className="secondary-button" onClick={() => setShowNew(false)}>Cancelar</button><button className="primary-button" onClick={() => setShowNew(false)}>Guardar turno</button></div></div></div>}
+    {showNew && <div className="modal-backdrop" onClick={() => setShowNew(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Agenda</p><h2 id="new-title">Nuevo turno</h2></div><button className="icon-button" onClick={() => setShowNew(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Cliente<input value={appointmentForm.client} onChange={(event) => updateAppointmentForm('client', event.target.value)} placeholder="Buscar o seleccionar cliente" /></label><label>Servicio<select value={appointmentForm.service} onChange={(event) => updateAppointmentForm('service', event.target.value)}><option value="" disabled>Elegir servicio</option><option>Esmaltado semipermanente · $18.500</option><option>Soft gel · $27.000</option><option>Lifting de pestañas · $22.000</option><option>Pedicuría tradicional · $15.000</option></select></label><div className="form-row"><label>Fecha<input type="date" value={appointmentForm.date} onChange={(event) => updateAppointmentForm('date', event.target.value)} /></label><label>Hora<select value={appointmentForm.time} onChange={(event) => updateAppointmentForm('time', event.target.value)}><option>09:00</option><option>10:30</option><option>12:00</option><option>15:30</option></select></label></div><label>Profesional<select value={appointmentForm.professional} onChange={(event) => updateAppointmentForm('professional', event.target.value)}><option value="" disabled>Asignar profesional</option><option>Valentina R.</option><option>Lucía M.</option><option>Agustina P.</option></select></label>{appointmentError && <p className="form-error" role="alert">{appointmentError}</p>}{appointmentSaved && <p className="form-success" role="status">Turno guardado correctamente.</p>}<div className="modal-foot"><button className="secondary-button" onClick={() => setShowNew(false)}>Cancelar</button><button className="primary-button" onClick={saveAppointment}>Guardar turno</button></div></div></div>}
   </main>
 }
