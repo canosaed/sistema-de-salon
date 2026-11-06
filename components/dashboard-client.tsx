@@ -36,6 +36,8 @@ import {
   recordMaterialConsumptionAction,
 } from '@/app/actions/dashboard'
 import { createClient, updateClient, deleteClient } from '@/app/actions/clients'
+import { createService, updateService, deleteService } from '@/app/actions/services'
+import { createProfessional, updateProfessional, deleteProfessional } from '@/app/actions/professionals'
 
 interface DashboardProps {
   initialData: {
@@ -62,6 +64,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [appointments, setAppointments] = useState<any[]>(initialData.appointments)
   const [clients, setClients] = useState<any[]>(initialData.clients)
   const [services, setServices] = useState<any[]>(initialData.services)
+  const [professionals, setProfessionals] = useState<any[]>(initialData.professionals)
   const [materials, setMaterials] = useState<any[]>(initialData.materials)
   const [payments, setPayments] = useState<any[]>(initialData.payments)
   const [inventoryMovements, setInventoryMovements] = useState<any[]>(initialData.inventoryMovements)
@@ -84,10 +87,37 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [showRescheduleModal, setShowRescheduleModal] = useState<any>(null)
   const [showCancelModal, setShowCancelModal] = useState<any>(null)
   const [showInventoryModal, setShowInventoryModal] = useState(false)
+  const [showServiceModal, setShowServiceModal] = useState<any>(null) // null = cerrado, 'new' = alta, objeto = edición
+  const [showProfessionalModal, setShowProfessionalModal] = useState<any>(null) // null = cerrado, 'new' = alta, objeto = edición
 
   // Formularios
   const [isPending, startTransition] = useTransition()
   const [formError, setFormError] = useState('')
+
+  // Formulario ABM Servicio
+  const [serviceForm, setServiceForm] = useState({
+    id: '',
+    categoryId: initialData.categories[0]?.id || 'cat-manos',
+    name: '',
+    description: '',
+    price: '18500',
+    durationMinutes: 60,
+    prepMinutes: 5,
+    cleanupMinutes: 10,
+    depositType: 'percentage' as 'fixed' | 'percentage',
+    depositValue: 30,
+    allowPublicBooking: true,
+  })
+
+  // Formulario ABM Profesional
+  const [proForm, setProForm] = useState({
+    id: '',
+    name: '',
+    phone: '',
+    email: '',
+    specialties: '',
+    initials: '',
+  })
 
   // Formulario Nuevo Turno Interno
   const [formClientMode, setFormClientMode] = useState<'existing' | 'new'>('existing')
@@ -184,6 +214,102 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         setFormDepositAmount('0')
       } catch (err: any) {
         setFormError(err.message || 'Error al agendar el turno.')
+      }
+    })
+  }
+
+  // ABM SERVICIOS
+  const handleSaveService = (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      try {
+        if (serviceForm.id) {
+          const updated = await updateService(serviceForm.id, {
+            categoryId: serviceForm.categoryId,
+            name: serviceForm.name,
+            description: serviceForm.description,
+            price: Number(serviceForm.price),
+            durationMinutes: Number(serviceForm.durationMinutes),
+            prepMinutes: Number(serviceForm.prepMinutes),
+            cleanupMinutes: Number(serviceForm.cleanupMinutes),
+            depositType: serviceForm.depositType,
+            depositValue: Number(serviceForm.depositValue),
+            allowPublicBooking: serviceForm.allowPublicBooking,
+          })
+          setServices((prev) => prev.map((s) => (s.id === serviceForm.id ? updated : s)))
+        } else {
+          const created = await createService({
+            categoryId: serviceForm.categoryId,
+            name: serviceForm.name,
+            description: serviceForm.description,
+            price: Number(serviceForm.price),
+            durationMinutes: Number(serviceForm.durationMinutes),
+            prepMinutes: Number(serviceForm.prepMinutes),
+            cleanupMinutes: Number(serviceForm.cleanupMinutes),
+            depositType: serviceForm.depositType,
+            depositValue: Number(serviceForm.depositValue),
+            allowPublicBooking: serviceForm.allowPublicBooking,
+          })
+          setServices((prev) => [created, ...prev])
+        }
+        setShowServiceModal(null)
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleDeleteService = (id: string, name: string) => {
+    if (!confirm(`¿Eliminar el servicio "${name}"?`)) return
+    startTransition(async () => {
+      try {
+        await deleteService(id)
+        setServices((prev) => prev.filter((s) => s.id !== id))
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  // ABM PROFESIONALES
+  const handleSaveProfessional = (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      try {
+        if (proForm.id) {
+          const updated = await updateProfessional(proForm.id, {
+            name: proForm.name,
+            phone: proForm.phone,
+            email: proForm.email,
+            specialties: proForm.specialties,
+            initials: proForm.initials,
+          })
+          setProfessionals((prev) => prev.map((p) => (p.id === proForm.id ? updated : p)))
+        } else {
+          const created = await createProfessional({
+            name: proForm.name,
+            phone: proForm.phone,
+            email: proForm.email,
+            specialties: proForm.specialties,
+            initials: proForm.initials,
+          })
+          setProfessionals((prev) => [...prev, created])
+        }
+        setShowProfessionalModal(null)
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleDeleteProfessional = (id: string, name: string) => {
+    if (!confirm(`¿Desactivar a la profesional "${name}"? Se conservará todo su historial.`)) return
+    startTransition(async () => {
+      try {
+        await deleteProfessional(id)
+        setProfessionals((prev) => prev.filter((p) => p.id !== id))
+      } catch (err: any) {
+        alert(err.message)
       }
     })
   }
@@ -715,14 +841,37 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         )}
 
         {/* ------------------------------------------------------------------ */}
-        {/* 5. SERVICIOS */}
+        {/* 5. SERVICIOS (ABM / CRUD) */}
         {/* ------------------------------------------------------------------ */}
         {activeTab === 'Servicios' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
-                <h3>Catálogo de Servicios y Técnicas</h3>
-                <span>Precios, tiempos de preparación y limpieza</span>
+                <div>
+                  <h3>Catálogo de Servicios y Técnicas</h3>
+                  <p>Precios, tiempos de preparación y limpieza</p>
+                </div>
+                <button
+                  className="primary-button-sm"
+                  onClick={() => {
+                    setServiceForm({
+                      id: '',
+                      categoryId: initialData.categories[0]?.id || 'cat-manos',
+                      name: '',
+                      description: '',
+                      price: '18500',
+                      durationMinutes: 60,
+                      prepMinutes: 5,
+                      cleanupMinutes: 10,
+                      depositType: 'percentage',
+                      depositValue: 30,
+                      allowPublicBooking: true,
+                    })
+                    setShowServiceModal('new')
+                  }}
+                >
+                  <Plus size={16} /> Nuevo Servicio
+                </button>
               </div>
               <div className="services-admin-grid">
                 {services.map((s) => (
@@ -740,6 +889,35 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     <div className="srv-policy">
                       <small>Seña requerida: {s.depositType === 'fixed' ? `$${s.depositValue}` : `${s.depositValue}%`}</small>
                     </div>
+                    <div className="srv-card-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
+                      <button
+                        className="btn-sm"
+                        onClick={() => {
+                          setServiceForm({
+                            id: s.id,
+                            categoryId: s.categoryId,
+                            name: s.name,
+                            description: s.description || '',
+                            price: String(Number(s.price)),
+                            durationMinutes: s.durationMinutes,
+                            prepMinutes: s.prepMinutes,
+                            cleanupMinutes: s.cleanupMinutes,
+                            depositType: s.depositType as any,
+                            depositValue: Number(s.depositValue),
+                            allowPublicBooking: s.allowPublicBooking,
+                          })
+                          setShowServiceModal(s)
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn-sm btn-cancel"
+                        onClick={() => handleDeleteService(s.id, s.name)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -748,27 +926,69 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         )}
 
         {/* ------------------------------------------------------------------ */}
-        {/* 6. PROFESIONALES */}
+        {/* 6. PROFESIONALES (ABM / CRUD) */}
         {/* ------------------------------------------------------------------ */}
         {activeTab === 'Profesionales' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
-                <h3>Equipo del Salón</h3>
-                <p>Especialidades y disponibilidad</p>
+                <div>
+                  <h3>Equipo de Profesionales</h3>
+                  <p>Especialidades y disponibilidad</p>
+                </div>
+                <button
+                  className="primary-button-sm"
+                  onClick={() => {
+                    setProForm({
+                      id: '',
+                      name: '',
+                      phone: '',
+                      email: '',
+                      specialties: '',
+                      initials: '',
+                    })
+                    setShowProfessionalModal('new')
+                  }}
+                >
+                  <Plus size={16} /> Nueva Profesional
+                </button>
               </div>
               <div className="professionals-grid">
-                {initialData.professionals.map((p) => (
+                {professionals.map((p) => (
                   <div key={p.id} className="pro-admin-card">
                     <div className="pro-avatar-big">{p.initials || p.name.substring(0, 2)}</div>
                     <h4>{p.name}</h4>
-                    <p className="pro-spec">{p.specialties}</p>
+                    <p className="pro-spec">{p.specialties || 'Sin especialidad configurada'}</p>
                     <div className="pro-contact">
                       <span>Tel: {p.phone}</span>
-                      <span>Email: {p.email}</span>
+                      <span>Email: {p.email || '—'}</span>
                     </div>
                     <div className="pro-badge-available">
                       <CheckCircle size={14} color="#2e7d32" /> Activa en agenda
+                    </div>
+                    <div className="pro-card-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
+                      <button
+                        className="btn-sm"
+                        onClick={() => {
+                          setProForm({
+                            id: p.id,
+                            name: p.name,
+                            phone: p.phone,
+                            email: p.email || '',
+                            specialties: p.specialties || '',
+                            initials: p.initials || '',
+                          })
+                          setShowProfessionalModal(p)
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn-sm btn-cancel"
+                        onClick={() => handleDeleteProfessional(p.id, p.name)}
+                      >
+                        Desactivar
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1285,6 +1505,178 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               <div className="modal-foot">
                 <button type="button" className="secondary-button" onClick={() => setShowClientModal(false)}>Cancelar</button>
                 <button type="submit" className="primary-button" disabled={isPending}>Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL: ABM SERVICIO */}
+      {/* -------------------------------------------------------------------- */}
+      {showServiceModal && (
+        <div className="modal-backdrop" onClick={() => setShowServiceModal(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{serviceForm.id ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+              <button className="icon-btn" onClick={() => setShowServiceModal(null)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveService}>
+              <label>
+                Categoría:
+                <select
+                  value={serviceForm.categoryId}
+                  onChange={(e) => setServiceForm({ ...serviceForm, categoryId: e.target.value })}
+                >
+                  {initialData.categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Nombre del Servicio:
+                <input
+                  required
+                  value={serviceForm.name}
+                  onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                  placeholder="Ej. Uñas Acrílicas Esculpidas"
+                />
+              </label>
+              <label>
+                Descripción:
+                <textarea
+                  rows={2}
+                  value={serviceForm.description}
+                  onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                  placeholder="Detalles sobre el procedimiento..."
+                />
+              </label>
+              <div className="input-row">
+                <label>
+                  Precio (ARS):
+                  <input
+                    type="number"
+                    required
+                    value={serviceForm.price}
+                    onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Duración Neta (minutos):
+                  <input
+                    type="number"
+                    required
+                    value={serviceForm.durationMinutes}
+                    onChange={(e) => setServiceForm({ ...serviceForm, durationMinutes: Number(e.target.value) })}
+                  />
+                </label>
+              </div>
+              <div className="input-row">
+                <label>
+                  Tiempo de Preparación (min):
+                  <input
+                    type="number"
+                    value={serviceForm.prepMinutes}
+                    onChange={(e) => setServiceForm({ ...serviceForm, prepMinutes: Number(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  Tiempo de Limpieza (min):
+                  <input
+                    type="number"
+                    value={serviceForm.cleanupMinutes}
+                    onChange={(e) => setServiceForm({ ...serviceForm, cleanupMinutes: Number(e.target.value) })}
+                  />
+                </label>
+              </div>
+              <div className="input-row">
+                <label>
+                  Tipo de Seña:
+                  <select
+                    value={serviceForm.depositType}
+                    onChange={(e) => setServiceForm({ ...serviceForm, depositType: e.target.value as any })}
+                  >
+                    <option value="percentage">Porcentual (%)</option>
+                    <option value="fixed">Fija ($)</option>
+                  </select>
+                </label>
+                <label>
+                  Valor de Seña:
+                  <input
+                    type="number"
+                    value={serviceForm.depositValue}
+                    onChange={(e) => setServiceForm({ ...serviceForm, depositValue: Number(e.target.value) })}
+                  />
+                </label>
+              </div>
+              <div className="modal-foot">
+                <button type="button" className="secondary-button" onClick={() => setShowServiceModal(null)}>Cancelar</button>
+                <button type="submit" className="primary-button" disabled={isPending}>Guardar Servicio</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL: ABM PROFESIONAL */}
+      {/* -------------------------------------------------------------------- */}
+      {showProfessionalModal && (
+        <div className="modal-backdrop" onClick={() => setShowProfessionalModal(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{proForm.id ? 'Editar Profesional' : 'Nueva Profesional'}</h3>
+              <button className="icon-btn" onClick={() => setShowProfessionalModal(null)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveProfessional}>
+              <label>
+                Nombre y Apellido:
+                <input
+                  required
+                  value={proForm.name}
+                  onChange={(e) => setProForm({ ...proForm, name: e.target.value })}
+                  placeholder="Ej. Camila Morales"
+                />
+              </label>
+              <div className="input-row">
+                <label>
+                  Teléfono:
+                  <input
+                    required
+                    value={proForm.phone}
+                    onChange={(e) => setProForm({ ...proForm, phone: e.target.value })}
+                    placeholder="11 5555 7777"
+                  />
+                </label>
+                <label>
+                  Iniciales:
+                  <input
+                    value={proForm.initials}
+                    onChange={(e) => setProForm({ ...proForm, initials: e.target.value })}
+                    placeholder="CM"
+                  />
+                </label>
+              </div>
+              <label>
+                Email (opcional):
+                <input
+                  type="email"
+                  value={proForm.email}
+                  onChange={(e) => setProForm({ ...proForm, email: e.target.value })}
+                  placeholder="camila@atelier.com"
+                />
+              </label>
+              <label>
+                Especialidades:
+                <input
+                  value={proForm.specialties}
+                  onChange={(e) => setProForm({ ...proForm, specialties: e.target.value })}
+                  placeholder="Ej. Uñas esculpidas, Kapping y Polygel"
+                />
+              </label>
+              <div className="modal-foot">
+                <button type="button" className="secondary-button" onClick={() => setShowProfessionalModal(null)}>Cancelar</button>
+                <button type="submit" className="primary-button" disabled={isPending}>Guardar Profesional</button>
               </div>
             </form>
           </div>
