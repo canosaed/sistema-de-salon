@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { createClient, deleteClient } from '@/app/actions/clients'
+import { createClient, deleteClient, updateClient } from '@/app/actions/clients'
 import {
   CalendarDays,
   ChevronLeft,
@@ -49,6 +49,7 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
   const [query, setQuery] = useState('')
   const [clients, setClients] = useState(initialClients)
   const [showNewClient, setShowNewClient] = useState(false)
+  const [editingClientId, setEditingClientId] = useState<string | null>(null)
   const [clientForm, setClientForm] = useState({ name: '', phone: '' })
   const [clientError, setClientError] = useState('')
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
@@ -62,6 +63,13 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
     }
   }
 
+  function openClientEditor(client: { id: string; name: string; phone: string }) {
+    setEditingClientId(client.id)
+    setClientForm({ name: client.name, phone: client.phone })
+    setClientError('')
+    setShowNewClient(true)
+  }
+
   async function saveClient() {
     const name = clientForm.name.trim()
     const phone = clientForm.phone.trim()
@@ -70,9 +78,15 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
       return
     }
     try {
-      const savedClient = await createClient({ name, phone })
-      setClients((current) => [savedClient, ...current])
+      if (editingClientId) {
+        const savedClient = await updateClient({ id: editingClientId, name, phone })
+        setClients((current) => current.map((client) => client.id === editingClientId ? { ...client, name: savedClient.name, phone: savedClient.phone } : client))
+      } else {
+        const savedClient = await createClient({ name, phone })
+        setClients((current) => [savedClient, ...current])
+      }
       setClientForm({ name: '', phone: '' })
+      setEditingClientId(null)
       setClientError('')
       setShowNewClient(false)
     } catch {
@@ -105,12 +119,12 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
           <section className="panel services-panel"><div className="panel-heading"><div><h2>Servicios más solicitados</h2><p>Agosto 2024</p></div><button className="text-button" onClick={() => setActive('Servicios')}>Ver servicios <ChevronRight size={15} /></button></div><div className="service-list">{services.slice(0, 3).map((service, index) => <div className="service-row" key={service.name}><span className="service-rank">0{index + 1}</span><span className={`service-color ${service.tone}`} /><div className="service-name"><b>{service.name}</b><span>{service.category}</span></div><div className="service-bar"><span style={{ width: `${[82, 64, 48][index]}%` }} /></div><strong>{[82, 64, 48][index]}%</strong></div>)}</div></section>
         </>}
         {active === 'Agenda' && <section className="full-panel panel"><div className="calendar-toolbar"><div><p className="section-kicker">Agenda semanal</p><h2>12 — 18 de agosto, 2024</h2></div><div className="calendar-actions"><button className="icon-button"><ChevronLeft size={18} /></button><button className="icon-button"><ChevronRight size={18} /></button><button className="primary-button" onClick={() => setShowNew(true)}><Plus size={18} />Nuevo turno</button></div></div><div className="week-grid">{['Lun 12','Mar 13','Mié 14','Jue 15','Vie 16','Sáb 17'].map((day, index) => <div className={index === 2 ? 'day-column today' : 'day-column'} key={day}><b>{day}</b><span>{index === 2 ? 'Hoy' : `${index + 9} turnos`}</span>{appointments.slice(index % 2, (index % 2) + 2).map((a) => <div className={`mini-event ${a.color}`} key={`${day}-${a.time}`}><b>{a.time}</b><span>{a.client}</span><small>{a.service}</small></div>)}</div>)}</div></section>}
-        {active === 'Clientes' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Base de clientes</p><h2>Clientes</h2><p>{clients.length} personas registradas</p></div><button className="primary-button" onClick={() => setShowNewClient(true)}><Plus size={18} />Nuevo cliente</button></div><div className="client-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o teléfono..." aria-label="Buscar clientes" /></div><div className="client-table">{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).map((client) => <div className="client-row" key={`${client.name}-${client.phone}`}><div className="client-initial">{client.name.split(' ').map((word) => word[0]).join('')}</div><div><b>{client.name}</b><span>{client.phone}</span></div><span className="client-visits">{client.visits} visitas</span><button className="more-button" onClick={() => removeClient(client.id, client.name)} aria-label={`Eliminar a ${client.name}`}><MoreHorizontal size={17} /></button></div>)}</div>{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).length === 0 && <p className="empty-copy">No encontramos clientes con esa búsqueda.</p>}</section>}
+        {active === 'Clientes' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Base de clientes</p><h2>Clientes</h2><p>{clients.length} personas registradas</p></div><button className="primary-button" onClick={() => { setEditingClientId(null); setClientForm({ name: '', phone: '' }); setClientError(''); setShowNewClient(true) }}><Plus size={18} />Nuevo cliente</button></div><div className="client-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o teléfono..." aria-label="Buscar clientes" /></div><div className="client-table">{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).map((client) => <div className="client-row" key={`${client.name}-${client.phone}`}><div className="client-initial">{client.name.split(' ').map((word) => word[0]).join('')}</div><div><b>{client.name}</b><span>{client.phone}</span></div><span className="client-visits">{client.visits} visitas</span><button className="more-button" onClick={() => openClientEditor(client)} aria-label={`Editar a ${client.name}`}>Editar</button><button className="more-button" onClick={() => removeClient(client.id, client.name)} aria-label={`Eliminar a ${client.name}`}><MoreHorizontal size={17} /></button></div>)}</div>{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).length === 0 && <p className="empty-copy">No encontramos clientes con esa búsqueda.</p>}</section>}
         {active === 'Servicios' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Catálogo</p><h2>Servicios</h2><p>Configurá precios, duración y profesionales.</p></div><button className="primary-button"><Plus size={18} />Nuevo servicio</button></div><div className="service-cards">{filteredServices.map((service) => <div className="catalog-card" key={service.name}><div className={`catalog-icon ${service.tone}`}><Scissors size={18} /></div><div><b>{service.name}</b><span>{service.category}</span><small>{service.duration} · {service.price}</small></div><button className="more-button"><MoreHorizontal size={17} /></button></div>)}</div></section>}
         {active === 'Profesionales' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Equipo</p><h2>Profesionales</h2><p>3 profesionales activas</p></div><button className="primary-button"><Plus size={18} />Agregar profesional</button></div><div className="professional-list">{[['Valentina R.','Manicuría y uñas','VR','8 turnos hoy'],['Lucía M.','Pestañas y cejas','LM','6 turnos hoy'],['Agustina P.','Pedicuría','AP','4 turnos hoy']].map(([name, specialty, initials, appointments]) => <div className="professional-row" key={name}><div className="professional-avatar">{initials}</div><div><b>{name}</b><span>{specialty}</span></div><span className="availability"><i />Disponible</span><strong>{appointments}</strong><button className="more-button"><MoreHorizontal size={17} /></button></div>)}</div></section>}
       </div>
     </section>
-    {showNewClient && <div className="modal-backdrop" onClick={() => setShowNewClient(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Clientes</p><h2 id="new-client-title">Nuevo cliente</h2></div><button className="icon-button" onClick={() => setShowNewClient(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Nombre completo<input value={clientForm.name} onChange={(event) => { setClientForm((current) => ({ ...current, name: event.target.value })); setClientError('') }} placeholder="Ej. Ana García" autoFocus /></label><label>Teléfono<input value={clientForm.phone} onChange={(event) => { setClientForm((current) => ({ ...current, phone: event.target.value })); setClientError('') }} placeholder="11 5555 0000" /></label>{clientError && <p className="form-error" role="alert">{clientError}</p>}<div className="modal-foot"><button className="secondary-button" onClick={() => setShowNewClient(false)}>Cancelar</button><button className="primary-button" onClick={saveClient}>Guardar cliente</button></div></div></div>}
+    {showNewClient && <div className="modal-backdrop" onClick={() => setShowNewClient(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Clientes</p><h2 id="new-client-title">{editingClientId ? 'Editar cliente' : 'Nuevo cliente'}</h2></div><button className="icon-button" onClick={() => setShowNewClient(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Nombre completo<input value={clientForm.name} onChange={(event) => { setClientForm((current) => ({ ...current, name: event.target.value })); setClientError('') }} placeholder="Ej. Ana García" autoFocus /></label><label>Teléfono<input value={clientForm.phone} onChange={(event) => { setClientForm((current) => ({ ...current, phone: event.target.value })); setClientError('') }} placeholder="11 5555 0000" /></label>{clientError && <p className="form-error" role="alert">{clientError}</p>}<div className="modal-foot"><button className="secondary-button" onClick={() => setShowNewClient(false)}>Cancelar</button><button className="primary-button" onClick={saveClient}>Guardar cliente</button></div></div></div>}
     {showNew && <div className="modal-backdrop" onClick={() => setShowNew(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Agenda</p><h2 id="new-title">Nuevo turno</h2></div><button className="icon-button" onClick={() => setShowNew(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Cliente<input placeholder="Buscar o seleccionar cliente" /></label><label>Servicio<select defaultValue=""><option value="" disabled>Elegir servicio</option><option>Esmaltado semipermanente · $18.500</option><option>Soft gel · $27.000</option><option>Lifting de pestañas · $22.000</option></select></label><div className="form-row"><label>Fecha<input type="date" defaultValue="2024-08-14" /></label><label>Hora<select defaultValue="10:30"><option>09:00</option><option>10:30</option><option>12:00</option><option>15:30</option></select></label></div><label>Profesional<select defaultValue=""><option value="" disabled>Asignar profesional</option><option>Valentina R.</option><option>Lucía M.</option><option>Agustina P.</option></select></label><div className="modal-foot"><button className="secondary-button" onClick={() => setShowNew(false)}>Cancelar</button><button className="primary-button" onClick={() => setShowNew(false)}>Guardar turno</button></div></div></div>}
   </main>
 }
