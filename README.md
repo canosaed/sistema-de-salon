@@ -34,7 +34,7 @@ La plataforma cuenta con un **panel de administración centralizado** para el eq
 - **Frontend:** [Next.js 16](https://nextjs.org/) (App Router, Turbopack) & [React 19](https://react.dev/)
 - **Lenguaje:** [TypeScript](https://www.typescriptlang.org/)
 - **Estilos:** [Tailwind CSS v4](https://tailwindcss.com/) & [Lucide Icons](https://lucide.dev/)
-- **Base de Datos y ORM:** PostgreSQL con [Drizzle ORM](https://orm.drizzle.team/)
+- **Base de Datos y ORM:** PostgreSQL con [Drizzle ORM](https://orm.drizzle.team/) & [drizzle-kit](https://orm.drizzle.team/kit-docs/overview)
 - **Autenticación:** [Better Auth](https://www.better-auth.com/)
 - **Almacenamiento Local / Offline:** IndexedDB (`lib/offline-sync.ts`)
 - **Gestor de Paquetes:** [pnpm](https://pnpm.io/) (versión 10+ o 12)
@@ -47,7 +47,7 @@ La plataforma cuenta con un **panel de administración centralizado** para el eq
 
 1. **Node.js:** Versión 18+ o superior (probado en Node.js v22).
 2. **pnpm:** Versión 9+ o 12 (`corepack enable` o `npm install -g pnpm`).
-3. *(Opcional)* Instancia de PostgreSQL (para entorno de producción persistente).
+3. **PostgreSQL:** Instancia local o servicio en la nube (Neon, Supabase, Railway o Docker).
 
 ---
 
@@ -62,20 +62,86 @@ cd <NOMBRE_DEL_DIRECTORIO>
 
 ### 2. Variables de Entorno
 
-Crear un archivo `.env` o `.env.local` en la raíz del proyecto basándose en las siguientes variables recomendadas:
+Crear un archivo `.env` o `.env.local` en la raíz del proyecto basándose en las siguientes variables requeridas:
 
 ```env
 # URL base de la aplicación
 BETTER_AUTH_URL=http://localhost:3000
 
-# Secreto para sesiones y tokens de Better Auth
+# Secreto para sesiones y tokens de Better Auth (mínimo 32 caracteres recomendados)
 BETTER_AUTH_SECRET=un_secreto_seguro_para_better_auth_1234567890
 
-# Conexión a Base de Datos PostgreSQL (requerido para Better Auth / Drizzle)
+# Conexión a Base de Datos PostgreSQL
+DATABASE_URL=postgresql://usuario:password@localhost:5432/atelier_beauty
+```
+
+---
+
+## 🗄️ Implementación de la Base de Datos y Migraciones
+
+La persistencia del sistema está diseñada sobre **PostgreSQL** mediante **Drizzle ORM**, implementando modelos relacionales fuertemente tipados con soporte de migraciones versionadas y Drizzle Kit.
+
+### 1. Levantar PostgreSQL (Opciones disponibles)
+
+#### Opción A: Usando Docker (Recomendada para desarrollo local rápido)
+Si dispones de Docker, puedes crear un contenedor PostgreSQL en un solo comando:
+
+```bash
+docker run --name atelier-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=atelier_beauty \
+  -p 5432:5432 -d postgres:16-alpine
+```
+
+En este caso, tu `DATABASE_URL` será:
+```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/atelier_beauty
 ```
 
-> **Nota:** La aplicación cuenta con un repositorio en memoria auto-inicializado con datos semilla completos (`seed-data.ts`) para permitir el funcionamiento inmediato de todas las pantallas, turnos, catálogo y disponibilidad sin depender obligatoriamente de una base de datos externa en desarrollo.
+#### Opción B: Base de datos Cloud (Serverless)
+Puedes utilizar cualquier proveedor PostgreSQL compatible con conexión directa o Connection Pooling:
+- [Neon](https://neon.tech/)
+- [Supabase](https://supabase.com/)
+- [Railway](https://railway.app/)
+
+Copia la cadena de conexión proporcionada por el servicio a tu variable `DATABASE_URL` en `.env`.
+
+---
+
+### 2. Comandos de Migración con Drizzle ORM
+
+El proyecto cuenta con scripts configurados en `package.json` para gestionar el ciclo de vida del esquema:
+
+| Comando | Acción | Descripción |
+|---|---|---|
+| `pnpm db:generate` | **Generar migración** | Analiza `lib/db/schema.ts` y genera los archivos de migración `.sql` en `./drizzle`. |
+| `pnpm db:migrate` | **Aplicar migraciones** | Ejecuta las migraciones pendientes sobre la base de datos configurada en `DATABASE_URL`. |
+| `pnpm db:push` | **Sincronización directa** | Aplica los cambios de esquema directamente sobre PostgreSQL sin generar archivos SQL (ideal para prototipado rápido). |
+| `pnpm db:studio` | **Drizzle Studio** | Abre una interfaz visual web interactiva en el navegador para explorar y editar los datos de las tablas. |
+
+#### Pasos para inicializar el esquema en PostgreSQL:
+
+1. **Generar los archivos de migración:**
+   ```bash
+   pnpm db:generate
+   ```
+   Esto creará los archivos de migración en la carpeta `drizzle/` (por ejemplo `0000_fixed_randall_flagg.sql`) que contienen la definición de las 21 tablas relacionales, columnas y tipos.
+
+2. **Aplicar las migraciones a la base de datos:**
+   ```bash
+   pnpm db:migrate
+   ```
+   O para sincronización inmediata:
+   ```bash
+   pnpm db:push
+   ```
+
+3. **Explorar las tablas con Drizzle Studio:**
+   ```bash
+   pnpm db:studio
+   ```
+   Abrirá Drizzle Studio en [https://local.drizzle.studio](https://local.drizzle.studio) conectado a tu base de datos.
 
 ---
 
@@ -173,6 +239,8 @@ O visita en tu navegador: [http://localhost:3000/api/tests](http://localhost:300
 │   ├── auth-form.tsx        # Formulario de autenticación
 │   ├── dashboard-client.tsx # Componente interactivo del panel administrativo
 │   └── public-booking-client.tsx # Asistente de reserva online pública
+├── drizzle/                 # Archivos SQL de migraciones versionadas
+├── drizzle.config.ts        # Configuración de Drizzle Kit
 ├── lib/
 │   ├── business-logic.ts    # Motor de reglas de negocio, duraciones, colisiones y señas
 │   ├── test-runner.ts       # Suite de validación de los 15 escenarios
