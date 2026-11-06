@@ -1130,6 +1130,30 @@ button, input, select { font: inherit; }
   padding-bottom: 0.75rem;
 }
 
+.icon-btn, .action-btn {
+  border: 1px solid #ebd8d3;
+  background: #ffffff;
+  color: #7d726f;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover, .action-btn:hover {
+  background: #fbf5f2;
+  color: #b98272;
+  border-color: #b98272;
+}
+
+.icon-btn:focus-visible, .action-btn:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 2px;
+}
+
 .modal-box label {
   display: block;
   font-size: 0.85rem;
