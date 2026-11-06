@@ -21,14 +21,14 @@ import {
   X,
 } from 'lucide-react'
 
-const initialAppointments = [
+const fallbackAppointments = [
   { time: '09:00', client: 'Sofía Martínez', service: 'Esmaltado semipermanente', professional: 'Valentina R.', status: 'Confirmado', color: 'bg-[#e4c3b7]' },
   { time: '10:30', client: 'Camila Torres', service: 'Lifting de pestañas', professional: 'Lucía M.', status: 'Pendiente', color: 'bg-[#d8c8e8]' },
   { time: '12:00', client: 'Julieta Acosta', service: 'Soft gel + nail art', professional: 'Valentina R.', status: 'Confirmado', color: 'bg-[#bfd8d2]' },
   { time: '15:30', client: 'Marina López', service: 'Pedicuría tradicional', professional: 'Agustina P.', status: 'Pendiente', color: 'bg-[#ead5a8]' },
 ]
 
-type Appointment = (typeof initialAppointments)[number]
+type Appointment = (typeof fallbackAppointments)[number]
 
 
 const services = [
@@ -45,7 +45,11 @@ function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Cal
   </div>
 }
 
-export default function DashboardShell() {
+export default function DashboardShell({
+  initialAppointments = fallbackAppointments,
+}: {
+  initialAppointments?: Appointment[]
+}) {
   const [active, setActive] = useState('Resumen')
   const [showNew, setShowNew] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
