@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { createClient } from '@/app/actions/clients'
+import { createClient, deleteClient } from '@/app/actions/clients'
 import {
   CalendarDays,
   ChevronLeft,
@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Cal
   </div>
 }
 
-export default function DashboardClient({ initialClients }: { initialClients: Array<{ name: string; phone: string; visits: number }> }) {
+export default function DashboardClient({ initialClients }: { initialClients: Array<{ id: string; name: string; phone: string; visits: number }> }) {
   const [active, setActive] = useState('Resumen')
   const [showNew, setShowNew] = useState(false)
   const [query, setQuery] = useState('')
@@ -52,6 +52,16 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
   const [clientForm, setClientForm] = useState({ name: '', phone: '' })
   const [clientError, setClientError] = useState('')
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
+  async function removeClient(clientId: string, clientName: string) {
+    if (!window.confirm(`¿Eliminar a ${clientName}?`)) return
+    try {
+      await deleteClient(clientId)
+      setClients((current) => current.filter((client) => client.id !== clientId))
+    } catch {
+      setClientError('No pudimos eliminar el cliente. Intentá nuevamente.')
+    }
+  }
+
   async function saveClient() {
     const name = clientForm.name.trim()
     const phone = clientForm.phone.trim()
@@ -95,7 +105,7 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
           <section className="panel services-panel"><div className="panel-heading"><div><h2>Servicios más solicitados</h2><p>Agosto 2024</p></div><button className="text-button" onClick={() => setActive('Servicios')}>Ver servicios <ChevronRight size={15} /></button></div><div className="service-list">{services.slice(0, 3).map((service, index) => <div className="service-row" key={service.name}><span className="service-rank">0{index + 1}</span><span className={`service-color ${service.tone}`} /><div className="service-name"><b>{service.name}</b><span>{service.category}</span></div><div className="service-bar"><span style={{ width: `${[82, 64, 48][index]}%` }} /></div><strong>{[82, 64, 48][index]}%</strong></div>)}</div></section>
         </>}
         {active === 'Agenda' && <section className="full-panel panel"><div className="calendar-toolbar"><div><p className="section-kicker">Agenda semanal</p><h2>12 — 18 de agosto, 2024</h2></div><div className="calendar-actions"><button className="icon-button"><ChevronLeft size={18} /></button><button className="icon-button"><ChevronRight size={18} /></button><button className="primary-button" onClick={() => setShowNew(true)}><Plus size={18} />Nuevo turno</button></div></div><div className="week-grid">{['Lun 12','Mar 13','Mié 14','Jue 15','Vie 16','Sáb 17'].map((day, index) => <div className={index === 2 ? 'day-column today' : 'day-column'} key={day}><b>{day}</b><span>{index === 2 ? 'Hoy' : `${index + 9} turnos`}</span>{appointments.slice(index % 2, (index % 2) + 2).map((a) => <div className={`mini-event ${a.color}`} key={`${day}-${a.time}`}><b>{a.time}</b><span>{a.client}</span><small>{a.service}</small></div>)}</div>)}</div></section>}
-        {active === 'Clientes' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Base de clientes</p><h2>Clientes</h2><p>{clients.length} personas registradas</p></div><button className="primary-button" onClick={() => setShowNewClient(true)}><Plus size={18} />Nuevo cliente</button></div><div className="client-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o teléfono..." aria-label="Buscar clientes" /></div><div className="client-table">{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).map((client) => <div className="client-row" key={`${client.name}-${client.phone}`}><div className="client-initial">{client.name.split(' ').map((word) => word[0]).join('')}</div><div><b>{client.name}</b><span>{client.phone}</span></div><span className="client-visits">{client.visits} visitas</span><button className="more-button" aria-label={`Opciones para ${client.name}`}><MoreHorizontal size={17} /></button></div>)}</div>{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).length === 0 && <p className="empty-copy">No encontramos clientes con esa búsqueda.</p>}</section>}
+        {active === 'Clientes' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Base de clientes</p><h2>Clientes</h2><p>{clients.length} personas registradas</p></div><button className="primary-button" onClick={() => setShowNewClient(true)}><Plus size={18} />Nuevo cliente</button></div><div className="client-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o teléfono..." aria-label="Buscar clientes" /></div><div className="client-table">{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).map((client) => <div className="client-row" key={`${client.name}-${client.phone}`}><div className="client-initial">{client.name.split(' ').map((word) => word[0]).join('')}</div><div><b>{client.name}</b><span>{client.phone}</span></div><span className="client-visits">{client.visits} visitas</span><button className="more-button" onClick={() => removeClient(client.id, client.name)} aria-label={`Eliminar a ${client.name}`}><MoreHorizontal size={17} /></button></div>)}</div>{clients.filter((client) => `${client.name} ${client.phone}`.toLowerCase().includes(query.toLowerCase())).length === 0 && <p className="empty-copy">No encontramos clientes con esa búsqueda.</p>}</section>}
         {active === 'Servicios' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Catálogo</p><h2>Servicios</h2><p>Configurá precios, duración y profesionales.</p></div><button className="primary-button"><Plus size={18} />Nuevo servicio</button></div><div className="service-cards">{filteredServices.map((service) => <div className="catalog-card" key={service.name}><div className={`catalog-icon ${service.tone}`}><Scissors size={18} /></div><div><b>{service.name}</b><span>{service.category}</span><small>{service.duration} · {service.price}</small></div><button className="more-button"><MoreHorizontal size={17} /></button></div>)}</div></section>}
         {active === 'Profesionales' && <section className="full-panel panel"><div className="panel-heading"><div><p className="section-kicker">Equipo</p><h2>Profesionales</h2><p>3 profesionales activas</p></div><button className="primary-button"><Plus size={18} />Agregar profesional</button></div><div className="professional-list">{[['Valentina R.','Manicuría y uñas','VR','8 turnos hoy'],['Lucía M.','Pestañas y cejas','LM','6 turnos hoy'],['Agustina P.','Pedicuría','AP','4 turnos hoy']].map(([name, specialty, initials, appointments]) => <div className="professional-row" key={name}><div className="professional-avatar">{initials}</div><div><b>{name}</b><span>{specialty}</span></div><span className="availability"><i />Disponible</span><strong>{appointments}</strong><button className="more-button"><MoreHorizontal size={17} /></button></div>)}</div></section>}
       </div>

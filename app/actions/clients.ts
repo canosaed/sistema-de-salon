@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
 
@@ -10,7 +10,13 @@ export async function getClients() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
 
-  return db.select({ name: clients.name, phone: clients.phone, visits: clients.visits }).from(clients).where(eq(clients.userId, session.user.id)).orderBy(asc(clients.name))
+  return db.select({ id: clients.id, name: clients.name, phone: clients.phone, visits: clients.visits }).from(clients).where(eq(clients.userId, session.user.id)).orderBy(asc(clients.name))
+}
+
+export async function deleteClient(clientId: string) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  await db.delete(clients).where(and(eq(clients.id, clientId), eq(clients.userId, session.user.id)))
 }
 
 export async function createClient(input: { name: string; phone: string }) {
