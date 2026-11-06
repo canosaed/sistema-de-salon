@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createClient } from '@/app/actions/clients'
 import {
   CalendarDays,
   ChevronLeft,
@@ -57,17 +58,22 @@ export default function Page() {
   const [clientForm, setClientForm] = useState({ name: '', phone: '' })
   const [clientError, setClientError] = useState('')
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
-  function saveClient() {
+  async function saveClient() {
     const name = clientForm.name.trim()
     const phone = clientForm.phone.trim()
     if (!name || !phone) {
       setClientError('Completá nombre y teléfono para guardar el cliente.')
       return
     }
-    setClients((current) => [{ name, phone, visits: 0 }, ...current])
-    setClientForm({ name: '', phone: '' })
-    setClientError('')
-    setShowNewClient(false)
+    try {
+      const savedClient = await createClient({ name, phone })
+      setClients((current) => [savedClient, ...current])
+      setClientForm({ name: '', phone: '' })
+      setClientError('')
+      setShowNewClient(false)
+    } catch {
+      setClientError('No pudimos guardar el cliente. Verificá tu sesión e intentá nuevamente.')
+    }
   }
 
   const nav = [

@@ -1,0 +1,26 @@
+'use server'
+
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { clients } from '@/lib/db/schema'
+
+export async function createClient(input: { name: string; phone: string }) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+
+  const name = input.name.trim()
+  const phone = input.phone.trim()
+  if (!name || !phone) throw new Error('Missing required client fields')
+
+  const client = {
+    id: crypto.randomUUID(),
+    userId: session.user.id,
+    name,
+    phone,
+    visits: 0,
+  }
+
+  await db.insert(clients).values(client)
+  return client
+}
