@@ -194,6 +194,185 @@ class SalonRepository {
   }
 
   // -------------------------
+  // ABM (CRUD) SERVICIOS
+  // -------------------------
+  createService(input: {
+    categoryId: string
+    name: string
+    description?: string
+    price: number
+    durationMinutes: number
+    prepMinutes?: number
+    cleanupMinutes?: number
+    depositType?: 'fixed' | 'percentage'
+    depositValue?: number
+    allowPublicBooking?: boolean
+  }) {
+    const newService = {
+      id: `srv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      categoryId: input.categoryId,
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      price: input.price.toFixed(2),
+      durationMinutes: input.durationMinutes,
+      prepMinutes: input.prepMinutes || 0,
+      cleanupMinutes: input.cleanupMinutes || 0,
+      depositType: input.depositType || 'percentage',
+      depositValue: (input.depositValue ?? 30).toFixed(2),
+      allowPublicBooking: input.allowPublicBooking ?? true,
+      isActive: true,
+      cancellationPolicy: 'Aviso con 24 hs de anticipación.',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.services.unshift(newService)
+    return newService
+  }
+
+  updateService(
+    id: string,
+    input: {
+      categoryId?: string
+      name?: string
+      description?: string
+      price?: number
+      durationMinutes?: number
+      prepMinutes?: number
+      cleanupMinutes?: number
+      depositType?: 'fixed' | 'percentage'
+      depositValue?: number
+      allowPublicBooking?: boolean
+    }
+  ) {
+    const srv = this.services.find((s) => s.id === id)
+    if (!srv) throw new Error('Servicio no encontrado')
+
+    if (input.categoryId !== undefined) srv.categoryId = input.categoryId
+    if (input.name !== undefined) srv.name = input.name.trim()
+    if (input.description !== undefined) srv.description = input.description.trim() || null
+    if (input.price !== undefined) srv.price = input.price.toFixed(2)
+    if (input.durationMinutes !== undefined) srv.durationMinutes = input.durationMinutes
+    if (input.prepMinutes !== undefined) srv.prepMinutes = input.prepMinutes
+    if (input.cleanupMinutes !== undefined) srv.cleanupMinutes = input.cleanupMinutes
+    if (input.depositType !== undefined) srv.depositType = input.depositType
+    if (input.depositValue !== undefined) srv.depositValue = input.depositValue.toFixed(2)
+    if (input.allowPublicBooking !== undefined) srv.allowPublicBooking = input.allowPublicBooking
+    srv.updatedAt = new Date()
+
+    return srv
+  }
+
+  deleteService(id: string) {
+    const srv = this.services.find((s) => s.id === id)
+    if (srv) {
+      // Baja lógica para conservar integridad de turnos históricos
+      srv.isActive = false
+      srv.updatedAt = new Date()
+    }
+    return { success: true }
+  }
+
+  // -------------------------
+  // ABM (CRUD) PROFESIONALES
+  // -------------------------
+  createProfessional(input: {
+    name: string
+    phone: string
+    email?: string
+    specialties?: string
+    initials?: string
+    serviceIds?: string[]
+  }) {
+    const initials = input.initials || input.name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)
+    const newPro = {
+      id: `pro-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: null,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      email: input.email?.trim() || null,
+      specialties: input.specialties?.trim() || null,
+      initials,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.professionals.push(newPro)
+
+    // Asignar servicios habilitados
+    if (input.serviceIds && input.serviceIds.length > 0) {
+      for (const serviceId of input.serviceIds) {
+        this.professionalServices.push({
+          id: `ps-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          professionalId: newPro.id,
+          serviceId,
+        })
+      }
+    }
+
+    // Horarios por defecto (Lunes a Viernes 09:00 - 18:00 con descanso 13:00 - 14:00)
+    for (const day of [1, 2, 3, 4, 5]) {
+      this.schedules.push({
+        id: `sched-${newPro.id}-${day}`,
+        professionalId: newPro.id,
+        dayOfWeek: day,
+        startTime: '09:00',
+        endTime: '18:00',
+        breakStartTime: '13:00',
+        breakEndTime: '14:00',
+        isActive: true,
+      })
+    }
+
+    return newPro
+  }
+
+  updateProfessional(
+    id: string,
+    input: {
+      name?: string
+      phone?: string
+      email?: string
+      specialties?: string
+      initials?: string
+      serviceIds?: string[]
+    }
+  ) {
+    const pro = this.professionals.find((p) => p.id === id)
+    if (!pro) throw new Error('Profesional no encontrada')
+
+    if (input.name !== undefined) pro.name = input.name.trim()
+    if (input.phone !== undefined) pro.phone = input.phone.trim()
+    if (input.email !== undefined) pro.email = input.email.trim() || null
+    if (input.specialties !== undefined) pro.specialties = input.specialties.trim() || null
+    if (input.initials !== undefined) pro.initials = input.initials.trim()
+    pro.updatedAt = new Date()
+
+    if (input.serviceIds) {
+      // Reasignar servicios
+      this.professionalServices = this.professionalServices.filter((ps) => ps.professionalId !== id)
+      for (const serviceId of input.serviceIds) {
+        this.professionalServices.push({
+          id: `ps-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          professionalId: id,
+          serviceId,
+        })
+      }
+    }
+
+    return pro
+  }
+
+  deleteProfessional(id: string) {
+    const pro = this.professionals.find((p) => p.id === id)
+    if (pro) {
+      // Baja lógica según regla 4.6 (conservar historial)
+      pro.isActive = false
+      pro.updatedAt = new Date()
+    }
+    return { success: true }
+  }
+
+  // -------------------------
   // DISPONIBILIDAD
   // -------------------------
   getAvailableSlots(params: {
