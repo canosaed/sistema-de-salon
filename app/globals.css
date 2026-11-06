@@ -180,11 +180,18 @@ button, input, select { font: inherit; }
 /* ESTILOS DEL SISTEMA DE GESTIÓN Y RESERVA ONLINE                       */
 /* ===================================================================== */
 
+.booking-page-layout {
+  min-height: 100vh;
+  background-color: #faf7f5 !important;
+  color: #2b2625 !important;
+}
+
 .public-booking-container {
   max-width: 860px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 2.5rem 1.25rem 4rem;
   font-family: inherit;
+  color: #2b2625 !important;
 }
 
 .booking-header {
@@ -197,7 +204,7 @@ button, input, select { font: inherit; }
   align-items: center;
   gap: 0.4rem;
   background: #fbf5f2;
-  color: #b98272;
+  color: #a86c5c;
   padding: 0.35rem 0.85rem;
   border-radius: 999px;
   font-size: 0.825rem;
@@ -209,12 +216,12 @@ button, input, select { font: inherit; }
 .booking-header h1 {
   font-size: 2.25rem;
   font-weight: 700;
-  color: #2b2625;
+  color: #2b2625 !important;
   margin-bottom: 0.5rem;
 }
 
 .booking-header p {
-  color: #7d726f;
+  color: #635754 !important;
   font-size: 1rem;
 }
 
@@ -223,7 +230,7 @@ button, input, select { font: inherit; }
   justify-content: space-between;
   margin-bottom: 2rem;
   position: relative;
-  border-bottom: 1px solid #eee5e2;
+  border-bottom: 1px solid #e2d6d2;
   padding-bottom: 1rem;
 }
 
@@ -231,7 +238,7 @@ button, input, select { font: inherit; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #a49793;
+  color: #7a6e6b !important;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -243,28 +250,61 @@ button, input, select { font: inherit; }
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #eee5e2;
-  color: #7d726f;
+  background: #e8deda;
+  color: #4a3e3b;
   font-size: 0.8rem;
   font-weight: 700;
 }
 
 .step-item.active {
-  color: #2b2625;
-  font-weight: 600;
+  color: #2b2625 !important;
+  font-weight: 700;
 }
 
 .step-item.active span {
-  background: #b98272;
-  color: #fff;
+  background: #a86c5c;
+  color: #ffffff;
 }
 
 .booking-step-card {
-  background: #ffffff;
-  border: 1px solid #ede3e0;
+  background: #ffffff !important;
+  color: #2b2625 !important;
+  border: 1px solid #ebd8d3;
   border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  padding: 2.25rem;
+  box-shadow: 0 6px 24px rgba(43, 38, 37, 0.06);
+}
+
+.booking-step-card h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2b2625 !important;
+  margin-bottom: 1.25rem;
+}
+
+.booking-step-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #2b2625 !important;
+}
+
+.booking-step-card label {
+  color: #2b2625 !important;
+  font-weight: 600;
+  display: block;
+}
+
+.booking-step-card input,
+.booking-step-card textarea,
+.booking-step-card select {
+  background-color: #ffffff !important;
+  color: #2b2625 !important;
+  border: 1px solid #d5c4be !important;
+}
+
+.booking-step-card input::placeholder,
+.booking-step-card textarea::placeholder {
+  color: #8c807c !important;
 }
 
 .category-pills {
@@ -352,22 +392,31 @@ button, input, select { font: inherit; }
 
 .service-desc {
   font-size: 0.875rem;
-  color: #6e6461;
+  color: #4a3e3b !important;
   line-height: 1.4;
   margin-bottom: 1.25rem;
+}
+
+.service-duration {
+  font-size: 0.8rem;
+  color: #5c504d !important;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .service-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #f6efec;
+  border-top: 1px solid #f2ded9;
   padding-top: 0.75rem;
 }
 
 .service-price {
   font-weight: 700;
-  color: #b98272;
+  color: #9a5a4a !important;
   font-size: 1.05rem;
 }
 
