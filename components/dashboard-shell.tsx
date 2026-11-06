@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createAppointment } from '@/app/actions/appointments'
 import {
   CalendarDays,
   ChevronLeft,
@@ -59,17 +60,28 @@ export default function DashboardShell() {
     setAppointmentSaved(false)
   }
 
-  function saveAppointment() {
+  async function saveAppointment() {
     if (!appointmentForm.client || !appointmentForm.service || !appointmentForm.professional) {
       setAppointmentError('Completá cliente, servicio y profesional para guardar el turno.')
       return
     }
 
-    const color = appointmentForm.service.includes('Lifting') ? 'bg-[#d8c8e8]' : appointmentForm.service.includes('Pedicuría') ? 'bg-[#ead5a8]' : 'bg-[#bfd8d2]'
-    setAppointments((current) => [...current, { time: appointmentForm.time, client: appointmentForm.client, service: appointmentForm.service.split(' · ')[0], professional: appointmentForm.professional, status: 'Pendiente', color }])
-    setAppointmentSaved(true)
-    setAppointmentForm({ client: '', service: '', date: '2024-08-14', time: '10:30', professional: '' })
-    window.setTimeout(() => { setShowNew(false); setAppointmentSaved(false) }, 700)
+    try {
+      await createAppointment({
+        client: appointmentForm.client,
+        service: appointmentForm.service.split(' · ')[0],
+        appointmentDate: appointmentForm.date,
+        appointmentTime: appointmentForm.time,
+        professional: appointmentForm.professional,
+      })
+      const color = appointmentForm.service.includes('Lifting') ? 'bg-[#d8c8e8]' : appointmentForm.service.includes('Pedicuría') ? 'bg-[#ead5a8]' : 'bg-[#bfd8d2]'
+      setAppointments((current) => [...current, { time: appointmentForm.time, client: appointmentForm.client, service: appointmentForm.service.split(' · ')[0], professional: appointmentForm.professional, status: 'Pendiente', color }])
+      setAppointmentSaved(true)
+      setAppointmentForm({ client: '', service: '', date: '2024-08-14', time: '10:30', professional: '' })
+      window.setTimeout(() => { setShowNew(false); setAppointmentSaved(false) }, 700)
+    } catch {
+      setAppointmentError('No pudimos guardar el turno. Verificá tu sesión e intentá nuevamente.')
+    }
   }
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
   const nav = [

@@ -45,3 +45,16 @@ export const verification = pgTable("verification", {
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow(),
 })
+
+export const appointments = pgTable("appointment", {
+  id: text("id").primaryKey(),
+  userId: text("userId").notNull(),
+  client: text("client").notNull(),
+  service: text("service").notNull(),
+  appointmentDate: text("appointmentDate").notNull(),
+  appointmentTime: text("appointmentTime").notNull(),
+  professional: text("professional").notNull(),
+  status: text("status").notNull().default("Pendiente"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+})
