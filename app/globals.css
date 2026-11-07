@@ -1572,6 +1572,70 @@ button, input, select { font: inherit; }
   box-shadow: 0 0 0 3px rgba(185, 130, 114, 0.15);
 }
 
+.agenda-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.agenda-date-navigator {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5d8d3;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(43, 29, 25, 0.03);
+}
+
+.agenda-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #796660;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agenda-nav-btn:hover {
+  background: #f8f2ef;
+  color: #3e2e2a;
+}
+
+.agenda-nav-btn:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 1px;
+}
+
+.agenda-today-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8a5749;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agenda-today-btn:hover {
+  background: #fbf3f0;
+  color: #6c4135;
+}
+
+.agenda-today-btn:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 1px;
+}
+
 .view-toggle {
   display: inline-flex;
   background: #fbf7f5;
@@ -1608,6 +1672,49 @@ button, input, select { font: inherit; }
 .view-btn:focus-visible {
   outline: 2px solid #b98272;
   outline-offset: 1px;
+}
+
+.agenda-period-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #eddcd7;
+  border-radius: 12px;
+  padding: 0.75rem 1.15rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(43, 29, 25, 0.02);
+}
+
+.agenda-period-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.agenda-period-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #b98272;
+}
+
+.agenda-period-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2b2220;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+
+.agenda-period-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #8c6a61;
+  background: #fbf5f3;
+  border: 1px solid #ebd9d4;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
 }
 
 .calendar-appointments-grid {

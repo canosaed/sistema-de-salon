@@ -12,7 +12,7 @@ class SalonRepository {
   private categories = [...initialSeedData.categories]
   private services = [...initialSeedData.services]
   private techniques = [...initialSeedData.techniques]
-  private materials = [...initialSeedData.materials]
+  private materials: Array<any> = [...initialSeedData.materials]
   private professionals = [...initialSeedData.professionals]
   private professionalServices = [...initialSeedData.professionalServices]
   private schedules = [...initialSeedData.professionalSchedules]
@@ -75,7 +75,14 @@ class SalonRepository {
     },
   ]
   private inventoryMovements: Array<any> = []
-  private settings = { ...initialSeedData.settings }
+  private settings: Record<string, any> = {
+    ...initialSeedData.settings,
+    minCancelHoursNotice: initialSeedData.settings.minNoticeHoursForCancellation,
+    allowSimultaneousServices: false,
+    cancellationPolicyText: 'Cancelaciones con al menos 24 hs de anticipación.',
+    businessHoursStart: '09:00',
+    businessHoursEnd: '20:00',
+  }
 
   // -------------------------
   // MÉTODOS DE CONSULTA
@@ -117,6 +124,17 @@ class SalonRepository {
   }
 
   getSettings() {
+    return this.settings
+  }
+
+  updateSettings(input: Record<string, any>) {
+    this.settings = {
+      ...this.settings,
+      ...Object.fromEntries(Object.entries(input).filter(([_, v]) => v !== undefined)),
+    }
+    if (input.minCancelHoursNotice !== undefined) {
+      this.settings.minNoticeHoursForCancellation = input.minCancelHoursNotice
+    }
     return this.settings
   }
 
@@ -702,6 +720,69 @@ class SalonRepository {
   // -------------------------
   // INVENTARIO
   // -------------------------
+  createMaterial(input: {
+    name: string
+    category: string
+    unit: string
+    currentStock: number
+    minimumStock: number
+    estimatedCostUnit?: number
+  }) {
+    const newMaterial = {
+      id: `mat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: input.name.trim(),
+      category: input.category.trim(),
+      unit: input.unit.trim(),
+      currentStock: Number(input.currentStock).toFixed(2),
+      minStock: Number(input.minimumStock).toFixed(2),
+      minimumStock: Number(input.minimumStock).toFixed(2),
+      estimatedCostUnit: input.estimatedCostUnit !== undefined ? Number(input.estimatedCostUnit).toFixed(2) : undefined,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.materials.push(newMaterial)
+    return newMaterial
+  }
+
+  updateMaterial(
+    id: string,
+    input: {
+      name?: string
+      category?: string
+      unit?: string
+      currentStock?: number
+      minimumStock?: number
+      estimatedCostUnit?: number
+    }
+  ) {
+    const mat = this.materials.find((m) => m.id === id)
+    if (!mat) throw new Error('Material no encontrado')
+
+    if (input.name !== undefined) mat.name = input.name.trim()
+    if (input.category !== undefined) mat.category = input.category.trim()
+    if (input.unit !== undefined) mat.unit = input.unit.trim()
+    if (input.currentStock !== undefined) mat.currentStock = Number(input.currentStock).toFixed(2)
+    if (input.minimumStock !== undefined) {
+      mat.minStock = Number(input.minimumStock).toFixed(2)
+      mat.minimumStock = Number(input.minimumStock).toFixed(2)
+    }
+    if (input.estimatedCostUnit !== undefined) {
+      mat.estimatedCostUnit = Number(input.estimatedCostUnit).toFixed(2)
+    }
+    mat.updatedAt = new Date()
+    return mat
+  }
+
+  deleteMaterial(id: string) {
+    const mat = this.materials.find((m) => m.id === id)
+    if (mat) {
+      mat.isActive = false
+      mat.updatedAt = new Date()
+    }
+    return { success: true }
+  }
+
   registerMaterialMovement(input: {
     materialId: string
     type: 'in' | 'out' | 'adjustment' | 'waste'
