@@ -979,46 +979,57 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 {services.map((s) => (
                   <div key={s.id} className="service-admin-card">
                     <div className="srv-card-top">
-                      <h4>{s.name}</h4>
-                      <span className="srv-price">${Number(s.price).toLocaleString('es-AR')} ARS</span>
+                      <div>
+                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '')}</span>
+                        <h4>{s.name}</h4>
+                      </div>
+                      <span className="srv-price">${Number(s.price).toLocaleString('es-AR')} <small>ARS</small></span>
                     </div>
-                    <p className="srv-desc">{s.description}</p>
+                    {s.description && <p className="srv-desc">{s.description}</p>}
                     <div className="srv-times">
-                      <span>Duración: <b>{s.durationMinutes} min</b></span>
-                      <span>Preparación: <b>{s.prepMinutes} min</b></span>
-                      <span>Limpieza: <b>{s.cleanupMinutes} min</b></span>
+                      <div className="srv-time-badge">
+                        <Clock3 size={13} />
+                        <span><b>{s.durationMinutes} min</b> total</span>
+                      </div>
+                      {(Number(s.prepMinutes) > 0 || Number(s.cleanupMinutes) > 0) && (
+                        <span className="srv-time-breakdown">
+                          Prep {s.prepMinutes}m · Limp {s.cleanupMinutes}m
+                        </span>
+                      )}
                     </div>
-                    <div className="srv-policy">
-                      <small>Seña requerida: {s.depositType === 'fixed' ? `$${s.depositValue}` : `${s.depositValue}%`}</small>
-                    </div>
-                    <div className="srv-card-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
-                      <button
-                        className="btn-sm"
-                        onClick={() => {
-                          setServiceForm({
-                            id: s.id,
-                            categoryId: s.categoryId,
-                            name: s.name,
-                            description: s.description || '',
-                            price: String(Number(s.price)),
-                            durationMinutes: s.durationMinutes,
-                            prepMinutes: s.prepMinutes,
-                            cleanupMinutes: s.cleanupMinutes,
-                            depositType: s.depositType as any,
-                            depositValue: Number(s.depositValue),
-                            allowPublicBooking: s.allowPublicBooking,
-                          })
-                          setShowServiceModal(s)
-                        }}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="btn-sm btn-cancel"
-                        onClick={() => handleDeleteService(s.id, s.name)}
-                      >
-                        Eliminar
-                      </button>
+                    <div className="srv-footer-row">
+                      <span className="srv-policy-badge">
+                        Seña: {s.depositType === 'fixed' ? `$${Number(s.depositValue).toLocaleString('es-AR')}` : `${Number(s.depositValue)}%`}
+                      </span>
+                      <div className="srv-card-actions">
+                        <button
+                          className="btn-link-edit"
+                          onClick={() => {
+                            setServiceForm({
+                              id: s.id,
+                              categoryId: s.categoryId,
+                              name: s.name,
+                              description: s.description || '',
+                              price: String(Number(s.price)),
+                              durationMinutes: s.durationMinutes,
+                              prepMinutes: s.prepMinutes,
+                              cleanupMinutes: s.cleanupMinutes,
+                              depositType: s.depositType as any,
+                              depositValue: Number(s.depositValue),
+                              allowPublicBooking: s.allowPublicBooking,
+                            })
+                            setShowServiceModal(s)
+                          }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="btn-link-delete"
+                          onClick={() => handleDeleteService(s.id, s.name)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -1053,11 +1053,166 @@ button, input, select { font: inherit; }
   gap: 1.25rem;
 }
 
-.material-card, .service-admin-card, .pro-admin-card {
+.material-card, .pro-admin-card {
   background: #fbf8f7;
   border: 1px solid #ebd8d3;
   border-radius: 12px;
   padding: 1.25rem;
+}
+
+/* Service Admin Card: Minimalista, limpio y moderno */
+.services-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.service-admin-card {
+  background: #ffffff;
+  border: 1px solid #ebe5e1;
+  border-radius: 14px;
+  padding: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.service-admin-card:hover {
+  border-color: #d8cec8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(43, 38, 37, 0.05);
+}
+
+.srv-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.srv-category-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9c8e88;
+  background: #f7f4f1;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.35rem;
+}
+
+.srv-card-top h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #2b2625;
+  line-height: 1.3;
+}
+
+.srv-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2b2625;
+  white-space: nowrap;
+}
+
+.srv-price small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #8c807c;
+  margin-left: 2px;
+}
+
+.srv-desc {
+  font-size: 0.825rem;
+  color: #6e6461;
+  line-height: 1.45;
+  margin: 0.65rem 0 0.9rem;
+  flex: 1;
+}
+
+.srv-times {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.85rem;
+}
+
+.srv-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #faf6f4;
+  color: #6d5b54;
+  font-size: 0.775rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #f0e6e2;
+}
+
+.srv-time-breakdown {
+  font-size: 0.735rem;
+  color: #9c918c;
+}
+
+.srv-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f4eeea;
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.srv-policy-badge {
+  font-size: 0.725rem;
+  font-weight: 500;
+  color: #8c7e78;
+}
+
+.srv-card-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.btn-link-edit, .btn-link-delete {
+  background: transparent;
+  border: none;
+  font-size: 0.775rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-link-edit {
+  color: #5c524f;
+}
+
+.btn-link-edit:hover {
+  background: #f7f4f1;
+  color: #2b2625;
+}
+
+.btn-link-delete {
+  color: #aa5045;
+}
+
+.btn-link-delete:hover {
+  background: #fdf2f0;
+  color: #922b21;
+}
+
+.btn-link-edit:focus-visible, .btn-link-delete:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 1px;
 }
 
 .material-card.low-stock {
