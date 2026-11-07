@@ -27,7 +27,13 @@ import {
   Wifi,
   WifiOff,
   Filter,
+  ChevronLeft,
 } from 'lucide-react'
+import {
+  getAgendaPeriodRange,
+  shiftAgendaDate,
+  isAppointmentInPeriod,
+} from '@/lib/agenda-filters'
 import {
   createInternalAppointment,
   updateAppointmentStatusAction,
@@ -75,6 +81,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
 
   // Filtros de Agenda
   const [agendaView, setAgendaView] = useState<'day' | 'week' | 'month'>('week')
+  const [agendaAnchorDate, setAgendaAnchorDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [selectedProfessionalFilter, setSelectedProfessionalFilter] = useState('all')
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
@@ -193,14 +200,20 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     .filter((p) => p.type !== 'refund')
     .reduce((acc, curr) => acc + Number(curr.amount), 0)
 
+  // Período activo de la Agenda según la vista (día, semana, mes) y fecha de referencia
+  const agendaPeriodRange = useMemo(() => {
+    return getAgendaPeriodRange(agendaAnchorDate, agendaView)
+  }, [agendaAnchorDate, agendaView])
+
   // Filtrado de turnos para la Agenda
   const filteredAppointments = useMemo(() => {
     return appointments.filter((a) => {
+      if (!isAppointmentInPeriod(a.date, agendaPeriodRange)) return false
       if (selectedProfessionalFilter !== 'all' && a.professionalId !== selectedProfessionalFilter) return false
       if (selectedStatusFilter !== 'all' && a.status !== selectedStatusFilter) return false
       return true
     })
-  }, [appointments, selectedProfessionalFilter, selectedStatusFilter])
+  }, [appointments, agendaPeriodRange, selectedProfessionalFilter, selectedStatusFilter])
 
   // --------------------------------------------------------------------------
   // HANDLERS
@@ -768,31 +781,73 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 </div>
               </div>
 
-              <div className="view-toggle" role="group" aria-label="Vista del calendario">
-                <button
-                  type="button"
-                  className={`view-btn ${agendaView === 'day' ? 'active' : ''}`}
-                  onClick={() => setAgendaView('day')}
-                  aria-pressed={agendaView === 'day'}
-                >
-                  Día
-                </button>
-                <button
-                  type="button"
-                  className={`view-btn ${agendaView === 'week' ? 'active' : ''}`}
-                  onClick={() => setAgendaView('week')}
-                  aria-pressed={agendaView === 'week'}
-                >
-                  Semana
-                </button>
-                <button
-                  type="button"
-                  className={`view-btn ${agendaView === 'month' ? 'active' : ''}`}
-                  onClick={() => setAgendaView('month')}
-                  aria-pressed={agendaView === 'month'}
-                >
-                  Mes
-                </button>
+              <div className="agenda-controls-right">
+                <div className="agenda-date-navigator" role="region" aria-label="Navegación temporal de la agenda">
+                  <button
+                    type="button"
+                    className="agenda-nav-btn"
+                    onClick={() => setAgendaAnchorDate((prev) => shiftAgendaDate(prev, agendaView, -1))}
+                    aria-label={`Período anterior (${agendaView === 'day' ? 'día' : agendaView === 'week' ? 'semana' : 'mes'} anterior)`}
+                  >
+                    <ChevronLeft size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="agenda-today-btn"
+                    onClick={() => setAgendaAnchorDate(todayStr)}
+                    title="Ir al día de hoy"
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
+                    className="agenda-nav-btn"
+                    onClick={() => setAgendaAnchorDate((prev) => shiftAgendaDate(prev, agendaView, 1))}
+                    aria-label={`Período siguiente (${agendaView === 'day' ? 'día' : agendaView === 'week' ? 'semana' : 'mes'} siguiente)`}
+                  >
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className="view-toggle" role="group" aria-label="Vista del calendario">
+                  <button
+                    type="button"
+                    className={`view-btn ${agendaView === 'day' ? 'active' : ''}`}
+                    onClick={() => setAgendaView('day')}
+                    aria-pressed={agendaView === 'day'}
+                  >
+                    Día
+                  </button>
+                  <button
+                    type="button"
+                    className={`view-btn ${agendaView === 'week' ? 'active' : ''}`}
+                    onClick={() => setAgendaView('week')}
+                    aria-pressed={agendaView === 'week'}
+                  >
+                    Semana
+                  </button>
+                  <button
+                    type="button"
+                    className={`view-btn ${agendaView === 'month' ? 'active' : ''}`}
+                    onClick={() => setAgendaView('month')}
+                    aria-pressed={agendaView === 'month'}
+                  >
+                    Mes
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Banner con el rango / período activo de la agenda */}
+            <div className="agenda-period-banner">
+              <div className="agenda-period-info">
+                <span className="agenda-period-icon" aria-hidden="true">
+                  <Calendar size={16} />
+                </span>
+                <span className="agenda-period-label">{agendaPeriodRange.label}</span>
+              </div>
+              <div className="agenda-period-badge">
+                <span>{filteredAppointments.length} {filteredAppointments.length === 1 ? 'turno' : 'turnos'}</span>
               </div>
             </div>
 

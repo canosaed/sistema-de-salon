@@ -7,6 +7,11 @@ import {
   minutesToTimeString,
 } from './business-logic'
 import { salonRepo } from './db/salon-repository'
+import {
+  getAgendaPeriodRange,
+  shiftAgendaDate,
+  isAppointmentInPeriod,
+} from './agenda-filters'
 
 export function runObligatoryScenariosTests() {
   const results: Array<{ scenario: number; name: string; passed: boolean; error?: string }> = []
@@ -188,6 +193,56 @@ export function runObligatoryScenariosTests() {
       reason: 'Consumo manicuría',
     })
     if (mov.movement.quantity !== 10) throw new Error('Fallo movimiento stock')
+  })
+
+  // 16. Filtro de agenda por Día
+  test(16, 'Filtro de agenda por Día incluye sólo turnos del día indicado', () => {
+    const range = getAgendaPeriodRange('2026-11-10', 'day')
+    if (range.startDate !== '2026-11-10' || range.endDate !== '2026-11-10') {
+      throw new Error(`Rango de día inválido: ${range.startDate} a ${range.endDate}`)
+    }
+    if (!isAppointmentInPeriod('2026-11-10', range)) {
+      throw new Error('Debería incluir turno de la misma fecha')
+    }
+    if (isAppointmentInPeriod('2026-11-11', range)) {
+      throw new Error('No debería incluir turno de fecha distinta')
+    }
+  })
+
+  // 17. Filtro de agenda por Semana
+  test(17, 'Filtro de agenda por Semana incluye turnos de lunes a domingo', () => {
+    // 2026-11-11 es miércoles. La semana va del lunes 2026-11-09 al domingo 2026-11-15
+    const range = getAgendaPeriodRange('2026-11-11', 'week')
+    if (range.startDate !== '2026-11-09' || range.endDate !== '2026-11-15') {
+      throw new Error(`Rango de semana inválido: ${range.startDate} a ${range.endDate}`)
+    }
+    if (!isAppointmentInPeriod('2026-11-09', range) || !isAppointmentInPeriod('2026-11-15', range)) {
+      throw new Error('Debería incluir turnos del lunes al domingo de esa semana')
+    }
+    if (isAppointmentInPeriod('2026-11-08', range) || isAppointmentInPeriod('2026-11-16', range)) {
+      throw new Error('No debería incluir turnos fuera de la semana')
+    }
+  })
+
+  // 18. Filtro de agenda por Mes y desplazamiento
+  test(18, 'Filtro de agenda por Mes abarca todo el mes y permite navegar períodos', () => {
+    const rangeNov = getAgendaPeriodRange('2026-11-11', 'month')
+    if (rangeNov.startDate !== '2026-11-01' || rangeNov.endDate !== '2026-11-30') {
+      throw new Error(`Rango de mes inválido: ${rangeNov.startDate} a ${rangeNov.endDate}`)
+    }
+    if (!isAppointmentInPeriod('2026-11-01', rangeNov) || !isAppointmentInPeriod('2026-11-30', rangeNov)) {
+      throw new Error('Debería incluir inicio y fin de mes')
+    }
+    if (isAppointmentInPeriod('2026-12-01', rangeNov)) {
+      throw new Error('No debería incluir turnos de otro mes')
+    }
+
+    // Desplazamiento de mes
+    const nextMonthAnchor = shiftAgendaDate('2026-11-11', 'month', 1)
+    const rangeDic = getAgendaPeriodRange(nextMonthAnchor, 'month')
+    if (rangeDic.startDate !== '2026-12-01' || rangeDic.endDate !== '2026-12-31') {
+      throw new Error(`Fallo desplazamiento al siguiente mes: ${rangeDic.startDate}`)
+    }
   })
 
   return results
