@@ -662,6 +662,13 @@ class SalonRepository {
     return apt
   }
 
+  deleteAppointment(id: string) {
+    const index = this.appointments.findIndex((a) => a.id === id)
+    if (index === -1) throw new Error('Turno no encontrado')
+    const [deleted] = this.appointments.splice(index, 1)
+    return deleted
+  }
+
   // -------------------------
   // PAGOS Y SEÑAS
   // -------------------------

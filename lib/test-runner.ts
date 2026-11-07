@@ -245,5 +245,47 @@ export function runObligatoryScenariosTests() {
     }
   })
 
+  // 19. Filtro y ABM de reservas (Listado Integral)
+  test(19, 'Filtros y operaciones de ABM en Reservas', () => {
+    // Crear reserva para prueba
+    const apt = salonRepo.createAppointment({
+      clientName: 'Reserva Test ABM',
+      clientPhone: '11 5555 9876',
+      serviceIds: ['srv-esmaltado-semi'],
+      professionalId: 'pro-valentina',
+      date: '2026-11-28',
+      time: '17:00',
+    })
+
+    // Simular búsqueda por nombre o teléfono
+    const all = salonRepo.getAppointments()
+    const found = all.filter((a) => a.clientName.toLowerCase().includes('abm') || a.clientPhone.includes('9876'))
+    if (!found.some((a) => a.id === apt.id)) {
+      throw new Error('No encontró la reserva por filtro de búsqueda')
+    }
+
+    // Cobro / Seña (Update / Pago)
+    const payRes = salonRepo.registerPayment({
+      appointmentId: apt.id,
+      amount: 10000,
+      method: 'cash',
+      type: 'deposit',
+    })
+    if (payRes.balance.paymentStatus !== 'partially_paid' && payRes.balance.paymentStatus !== 'deposit_paid') {
+      throw new Error('Fallo al asentar cobro en reserva')
+    }
+
+    // Cancelar y Eliminar definitivamente (Delete ABM)
+    salonRepo.updateAppointmentStatus(apt.id, 'cancelled', 'Cancelada por test')
+    const deleted = salonRepo.deleteAppointment(apt.id)
+    if (!deleted || deleted.id !== apt.id) {
+      throw new Error('Fallo al eliminar la reserva')
+    }
+    const afterDelete = salonRepo.getAppointments().find((a) => a.id === apt.id)
+    if (afterDelete) {
+      throw new Error('La reserva continúa existiendo tras eliminación')
+    }
+  })
+
   return results
 }

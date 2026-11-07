@@ -100,8 +100,13 @@ export function shiftAgendaDate(anchorDateStr: string, view: AgendaViewMode, off
     return formatLocalDate(anchor)
   }
 
-  // month
-  anchor.setMonth(anchor.getMonth() + offset)
+  // month (safe clamping for month-end dates like 31st)
+  const targetMonth = anchor.getMonth() + offset
+  const targetDay = anchor.getDate()
+  anchor.setDate(1)
+  anchor.setMonth(targetMonth)
+  const maxDays = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate()
+  anchor.setDate(Math.min(targetDay, maxDays))
   return formatLocalDate(anchor)
 }
 
