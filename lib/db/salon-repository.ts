@@ -824,6 +824,142 @@ class SalonRepository {
     this.inventoryMovements.unshift(movement)
     return { material: mat, movement }
   }
+
+  // -------------------------
+  // TURNOS Y HORARIOS DE PROFESIONALES (ABM / CRUD)
+  // -------------------------
+  getAllSchedules() {
+    return [...this.schedules]
+  }
+
+  getSchedulesByProfessional(professionalId: string) {
+    return this.schedules
+      .filter((s) => s.professionalId === professionalId)
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+  }
+
+  createSchedule(input: {
+    professionalId: string
+    dayOfWeek: number
+    startTime: string
+    endTime: string
+    breakStartTime?: string | null
+    breakEndTime?: string | null
+    isActive?: boolean
+  }) {
+    if (input.dayOfWeek < 0 || input.dayOfWeek > 6) {
+      throw new Error('Día de la semana inválido (debe ser 0 para Domingo hasta 6 para Sábado)')
+    }
+
+    const startMinutes = parseTimeToMinutes(input.startTime)
+    const endMinutes = parseTimeToMinutes(input.endTime)
+    if (startMinutes >= endMinutes) {
+      throw new Error('La hora de inicio debe ser anterior a la hora de fin')
+    }
+
+    if (input.breakStartTime && input.breakEndTime) {
+      const bStart = parseTimeToMinutes(input.breakStartTime)
+      const bEnd = parseTimeToMinutes(input.breakEndTime)
+      if (bStart >= bEnd) {
+        throw new Error('El inicio de la pausa debe ser anterior al fin de la misma')
+      }
+      if (bStart < startMinutes || bEnd > endMinutes) {
+        throw new Error('La pausa debe estar comprendida dentro del horario de atención')
+      }
+    }
+
+    const existing = this.schedules.find(
+      (s) => s.professionalId === input.professionalId && s.dayOfWeek === input.dayOfWeek
+    )
+    if (existing) {
+      existing.startTime = input.startTime
+      existing.endTime = input.endTime
+      existing.breakStartTime = input.breakStartTime || null
+      existing.breakEndTime = input.breakEndTime || null
+      existing.isActive = input.isActive !== undefined ? input.isActive : true
+      return existing
+    }
+
+    const newSchedule = {
+      id: `sched-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      professionalId: input.professionalId,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      breakStartTime: input.breakStartTime || null,
+      breakEndTime: input.breakEndTime || null,
+      isActive: input.isActive !== undefined ? input.isActive : true,
+    }
+
+    this.schedules.push(newSchedule)
+    return newSchedule
+  }
+
+  updateSchedule(
+    id: string,
+    input: {
+      dayOfWeek?: number
+      startTime?: string
+      endTime?: string
+      breakStartTime?: string | null
+      breakEndTime?: string | null
+      isActive?: boolean
+    }
+  ) {
+    const sched = this.schedules.find((s) => s.id === id)
+    if (!sched) throw new Error('Horario no encontrado')
+
+    const newStart = input.startTime || sched.startTime
+    const newEnd = input.endTime || sched.endTime
+    const startMinutes = parseTimeToMinutes(newStart)
+    const endMinutes = parseTimeToMinutes(newEnd)
+
+    if (startMinutes >= endMinutes) {
+      throw new Error('La hora de inicio debe ser anterior a la hora de fin')
+    }
+
+    const bStartStr = input.breakStartTime !== undefined ? input.breakStartTime : sched.breakStartTime
+    const bEndStr = input.breakEndTime !== undefined ? input.breakEndTime : sched.breakEndTime
+
+    if (bStartStr && bEndStr) {
+      const bStart = parseTimeToMinutes(bStartStr)
+      const bEnd = parseTimeToMinutes(bEndStr)
+      if (bStart >= bEnd) {
+        throw new Error('El inicio de la pausa debe ser anterior al fin de la misma')
+      }
+      if (bStart < startMinutes || bEnd > endMinutes) {
+        throw new Error('La pausa debe estar comprendida dentro del horario de atención')
+      }
+    }
+
+    if (input.dayOfWeek !== undefined) {
+      if (input.dayOfWeek < 0 || input.dayOfWeek > 6) {
+        throw new Error('Día de la semana inválido (0 a 6)')
+      }
+      sched.dayOfWeek = input.dayOfWeek
+    }
+    if (input.startTime !== undefined) sched.startTime = input.startTime
+    if (input.endTime !== undefined) sched.endTime = input.endTime
+    if (input.breakStartTime !== undefined) sched.breakStartTime = input.breakStartTime || null
+    if (input.breakEndTime !== undefined) sched.breakEndTime = input.breakEndTime || null
+    if (input.isActive !== undefined) sched.isActive = input.isActive
+
+    return sched
+  }
+
+  deleteSchedule(id: string) {
+    const index = this.schedules.findIndex((s) => s.id === id)
+    if (index === -1) throw new Error('Horario no encontrado')
+    const [deleted] = this.schedules.splice(index, 1)
+    return deleted
+  }
+
+  toggleScheduleActive(id: string) {
+    const sched = this.schedules.find((s) => s.id === id)
+    if (!sched) throw new Error('Horario no encontrado')
+    sched.isActive = !sched.isActive
+    return sched
+  }
 }
 
 // Singleton global para mantener persistencia entre server actions y llamadas durante el runtime

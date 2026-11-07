@@ -14,6 +14,7 @@ export async function getDashboardData() {
     payments: salonRepo.getPayments(),
     inventoryMovements: salonRepo.getInventoryMovements(),
     settings: salonRepo.getSettings(),
+    schedules: salonRepo.getAllSchedules(),
   }
 }
 
