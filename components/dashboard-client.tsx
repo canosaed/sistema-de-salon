@@ -1164,7 +1164,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             <div className="panel-card">
               <div className="panel-card-head">
                 <div>
-                  <h3>Control de Stock y Materiales (ABM)</h3>
+                  <h3>Control de Stock y Materiales</h3>
                   <p>Insumos, consumos estimados y alertas de stock mínimo</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -1207,35 +1207,41 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           </span>
                         )}
                       </div>
-                      <p className="mat-cat">{m.category}</p>
-                      <div className="mat-stock">
-                        <span>Stock actual: <b>{m.currentStock} {m.unit}</b></span>
-                        <span>Mínimo: {m.minStock || m.minimumStock} {m.unit}</span>
+                      <div className="mat-stock-metric">
+                        <span className="mat-stock-label">Stock actual</span>
+                        <div className="mat-stock-num">
+                          <b>{m.currentStock}</b> <small>{m.unit}</small>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
-                        <button
-                          className="btn-sm"
-                          onClick={() => {
-                            setMaterialForm({
-                              id: m.id,
-                              name: m.name,
-                              category: m.category,
-                              unit: m.unit,
-                              currentStock: String(m.currentStock),
-                              minimumStock: String(m.minStock || m.minimumStock),
-                              estimatedCostUnit: String(m.estimatedCostUnit || 0),
-                            })
-                            setShowMaterialModal(m)
-                          }}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="btn-sm btn-cancel"
-                          onClick={() => handleDeleteMaterial(m.id, m.name)}
-                        >
-                          Eliminar
-                        </button>
+                      <div className="mat-footer">
+                        <span>Mínimo sugerido: {String(m.minStock || m.minimumStock)} {m.unit}</span>
+                        {/* */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
+                          <button
+                            className="btn-sm"
+                            onClick={() => {
+                              setMaterialForm({
+                                id: m.id,
+                                name: m.name,
+                                category: m.category,
+                                unit: m.unit,
+                                currentStock: String(m.currentStock),
+                                minimumStock: String(m.minStock || m.minimumStock),
+                                estimatedCostUnit: String(m.estimatedCostUnit || 0),
+                              })
+                              setShowMaterialModal(m)
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn-sm btn-cancel"
+                            onClick={() => handleDeleteMaterial(m.id, m.name)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                        {/* */}
                       </div>
                     </div>
                   )
@@ -1311,7 +1317,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             <div className="panel-card">
               <div className="panel-card-head">
                 <div>
-                  <h3>Parámetros del Salón (ABM Configuración)</h3>
+                  <h3>Parámetros del Salón</h3>
                   <p>Políticas de reserva, señas requeridas, anticipación y reglas de atención</p>
                 </div>
               </div>
