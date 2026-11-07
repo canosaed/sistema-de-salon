@@ -968,39 +968,45 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               <div className="professionals-grid">
                 {professionals.map((p) => (
                   <div key={p.id} className="pro-admin-card">
-                    <div className="pro-avatar-big">{p.initials || p.name.substring(0, 2)}</div>
-                    <h4>{p.name}</h4>
+                    <div className="pro-card-header">
+                      <div className="pro-avatar-big">{p.initials || p.name.substring(0, 2)}</div>
+                      <div className="pro-info-head">
+                        <h4>{p.name}</h4>
+                        <span className="pro-badge-available">
+                          <CheckCircle size={12} /> Activa en agenda
+                        </span>
+                      </div>
+                    </div>
                     <p className="pro-spec">{p.specialties || 'Sin especialidad configurada'}</p>
                     <div className="pro-contact">
-                      <span>Tel: {p.phone}</span>
-                      <span>Email: {p.email || '—'}</span>
+                      <span><b>Tel:</b> {p.phone}</span>
+                      {p.email && <span><b>Email:</b> {p.email}</span>}
                     </div>
-                    <div className="pro-badge-available">
-                      <CheckCircle size={14} color="#2e7d32" /> Activa en agenda
-                    </div>
-                    <div className="pro-card-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
-                      <button
-                        className="btn-sm"
-                        onClick={() => {
-                          setProForm({
-                            id: p.id,
-                            name: p.name,
-                            phone: p.phone,
-                            email: p.email || '',
-                            specialties: p.specialties || '',
-                            initials: p.initials || '',
-                          })
-                          setShowProfessionalModal(p)
-                        }}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="btn-sm btn-cancel"
-                        onClick={() => handleDeleteProfessional(p.id, p.name)}
-                      >
-                        Desactivar
-                      </button>
+                    <div className="pro-footer-row">
+                      <div className="pro-card-actions">
+                        <button
+                          className="btn-link-edit"
+                          onClick={() => {
+                            setProForm({
+                              id: p.id,
+                              name: p.name,
+                              phone: p.phone,
+                              email: p.email || '',
+                              specialties: p.specialties || '',
+                              initials: p.initials || '',
+                            })
+                            setShowProfessionalModal(p)
+                          }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="btn-link-delete"
+                          onClick={() => handleDeleteProfessional(p.id, p.name)}
+                        >
+                          Desactivar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1071,17 +1077,24 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   return (
                     <div key={m.id} className={`material-card ${isLow ? 'low-stock' : ''}`}>
                       <div className="mat-head">
-                        <h4>{m.name}</h4>
+                        <div>
+                          <span className="mat-cat-tag">{m.category}</span>
+                          <h4>{m.name}</h4>
+                        </div>
                         {isLow && (
                           <span className="low-stock-alert">
-                            <AlertTriangle size={14} /> Stock Crítico
+                            <AlertTriangle size={13} /> Crítico
                           </span>
                         )}
                       </div>
-                      <p className="mat-cat">{m.category}</p>
-                      <div className="mat-stock">
-                        <span>Stock actual: <b>{m.currentStock} {m.unit}</b></span>
-                        <span>Mínimo: {m.minStock} {m.unit}</span>
+                      <div className="mat-stock-metric">
+                        <span className="mat-stock-label">Stock actual</span>
+                        <div className="mat-stock-num">
+                          <b>{m.currentStock}</b> <small>{m.unit}</small>
+                        </div>
+                      </div>
+                      <div className="mat-footer">
+                        <span>Mínimo sugerido: {m.minStock} {m.unit}</span>
                       </div>
                     </div>
                   )

@@ -208,24 +208,30 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
                 key={srv.id}
                 className={`service-booking-card ${selectedServiceId === srv.id ? 'selected' : ''}`}
                 onClick={() => handleServiceSelect(srv.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleServiceSelect(srv.id)
+                  }
+                }}
               >
                 <div className="service-card-header">
-                  <div className="service-icon-wrap">
-                    <Scissors size={20} />
-                  </div>
                   <div>
+                    <span className="srv-category-tag">{initialCatalog.categories.find((c) => c.id === srv.categoryId)?.name || 'Tratamiento'}</span>
                     <h3>{srv.name}</h3>
-                    <span className="service-duration">
-                      <Clock size={14} /> {srv.durationMinutes} min
-                    </span>
                   </div>
+                  <span className="service-price">
+                    ${Number(srv.price).toLocaleString('es-AR')} <small>ARS</small>
+                  </span>
                 </div>
                 <p className="service-desc">{srv.description}</p>
                 <div className="service-card-footer">
-                  <span className="service-price">
-                    ${Number(srv.price).toLocaleString('es-AR')} ARS
+                  <span className="service-duration">
+                    <Clock size={13} /> {srv.durationMinutes} min
                   </span>
-                  <button className="primary-button-sm">Elegir</button>
+                  <button className="btn-booking-select">Elegir</button>
                 </div>
               </div>
             ))}
