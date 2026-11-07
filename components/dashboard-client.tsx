@@ -563,6 +563,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           className="action-btn"
                           onClick={() => setShowPaymentModal(apt)}
                           title="Registrar pago o seña"
+                          aria-label={`Registrar pago o seña para turno de ${apt.clientName}`}
                         >
                           <CreditCard size={16} />
                         </button>
@@ -1175,10 +1176,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showNewAppointmentModal && (
         <div className="modal-backdrop" onClick={() => setShowNewAppointmentModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-new-apt" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Crear Nuevo Turno Interno</h3>
-              <button className="icon-btn" onClick={() => setShowNewAppointmentModal(false)}>
+              <h3 id="modal-title-new-apt">Crear Nuevo Turno Interno</h3>
+              <button className="icon-btn" onClick={() => setShowNewAppointmentModal(false)} aria-label="Cerrar modal">
                 <X size={18} />
               </button>
             </div>
@@ -1339,10 +1340,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showPaymentModal && (
         <div className="modal-backdrop" onClick={() => setShowPaymentModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-payment" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Registrar Pago / Seña</h3>
-              <button className="icon-btn" onClick={() => setShowPaymentModal(null)}><X size={18} /></button>
+              <h3 id="modal-title-payment">Registrar Pago / Seña</h3>
+              <button className="icon-btn" onClick={() => setShowPaymentModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <div className="payment-target-info">
               <p>Turno: <b>{showPaymentModal.serviceName}</b></p>
@@ -1401,10 +1402,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showRescheduleModal && (
         <div className="modal-backdrop" onClick={() => setShowRescheduleModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-reschedule" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Reprogramar Turno</h3>
-              <button className="icon-btn" onClick={() => setShowRescheduleModal(null)}><X size={18} /></button>
+              <h3 id="modal-title-reschedule">Reprogramar Turno</h3>
+              <button className="icon-btn" onClick={() => setShowRescheduleModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <p>Cliente: <b>{showRescheduleModal.clientName}</b> ({showRescheduleModal.serviceName})</p>
             <form onSubmit={handleConfirmReschedule}>
@@ -1442,10 +1443,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showCancelModal && (
         <div className="modal-backdrop" onClick={() => setShowCancelModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-cancel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Cancelar Turno</h3>
-              <button className="icon-btn" onClick={() => setShowCancelModal(null)}><X size={18} /></button>
+              <h3 id="modal-title-cancel">Cancelar Turno</h3>
+              <button className="icon-btn" onClick={() => setShowCancelModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <p>¿Estás seguro de cancelar el turno de <b>{showCancelModal.clientName}</b>?</p>
             <form onSubmit={handleConfirmCancel}>
@@ -1472,10 +1473,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showClientModal && (
         <div className="modal-backdrop" onClick={() => setShowClientModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-client" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{clientForm.id ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
-              <button className="icon-btn" onClick={() => setShowClientModal(false)}><X size={18} /></button>
+              <h3 id="modal-title-client">{clientForm.id ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
+              <button className="icon-btn" onClick={() => setShowClientModal(false)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveClient}>
               <label>
@@ -1516,10 +1517,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showServiceModal && (
         <div className="modal-backdrop" onClick={() => setShowServiceModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-service" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{serviceForm.id ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
-              <button className="icon-btn" onClick={() => setShowServiceModal(null)}><X size={18} /></button>
+              <h3 id="modal-title-service">{serviceForm.id ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+              <button className="icon-btn" onClick={() => setShowServiceModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveService}>
               <label>
@@ -1623,10 +1624,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showProfessionalModal && (
         <div className="modal-backdrop" onClick={() => setShowProfessionalModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-pro" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{proForm.id ? 'Editar Profesional' : 'Nueva Profesional'}</h3>
-              <button className="icon-btn" onClick={() => setShowProfessionalModal(null)}><X size={18} /></button>
+              <h3 id="modal-title-pro">{proForm.id ? 'Editar Profesional' : 'Nueva Profesional'}</h3>
+              <button className="icon-btn" onClick={() => setShowProfessionalModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveProfessional}>
               <label>
@@ -1688,10 +1689,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {showInventoryModal && (
         <div className="modal-backdrop" onClick={() => setShowInventoryModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-inventory" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>Registrar Movimiento de Material</h3>
-              <button className="icon-btn" onClick={() => setShowInventoryModal(false)}><X size={18} /></button>
+              <h3 id="modal-title-inventory">Registrar Movimiento de Material</h3>
+              <button className="icon-btn" onClick={() => setShowInventoryModal(false)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveInventory}>
               <label>
