@@ -1123,7 +1123,34 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                         </div>
                       </div>
                       <div className="mat-footer">
-                        <span>Mínimo sugerido: {m.minStock} {m.unit}</span>
+                        <span>Mínimo sugerido: {String(m.minStock || m.minimumStock)} {m.unit}</span>
+                        {/* */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f2ded9', paddingTop: '0.75rem' }}>
+                          <button
+                            className="btn-sm"
+                            onClick={() => {
+                              setMaterialForm({
+                                id: m.id,
+                                name: m.name,
+                                category: m.category,
+                                unit: m.unit,
+                                currentStock: String(m.currentStock),
+                                minimumStock: String(m.minStock || m.minimumStock),
+                                estimatedCostUnit: String(m.estimatedCostUnit || 0),
+                              })
+                              setShowMaterialModal(m)
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn-sm btn-cancel"
+                            onClick={() => handleDeleteMaterial(m.id, m.name)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                        {/* */}
                       </div>
                     </div>
                   )
@@ -1198,8 +1225,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
-                <h3>Parámetros del Salón</h3>
-                <p>Reglas de negocio, señas y anticipación</p>
+                <div>
+                  <h3>Parámetros del Salón</h3>
+                  <p>Políticas de reserva, señas requeridas, anticipación y reglas de atención</p>
+                </div>
               </div>
               <div className="settings-fields">
                 <label>
