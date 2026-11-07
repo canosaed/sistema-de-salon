@@ -335,93 +335,117 @@ button, input, select { font: inherit; }
 
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.25rem;
 }
 
 .service-booking-card {
-  border: 1px solid #ede3e0;
-  border-radius: 12px;
-  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #ebe5e1;
+  border-radius: 14px;
+  padding: 1.35rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .service-booking-card:hover {
-  border-color: #b98272;
+  border-color: #d8cec8;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(185,130,114,0.08);
+  box-shadow: 0 8px 24px rgba(43, 38, 37, 0.06);
+}
+
+.service-booking-card.selected {
+  border-color: #b98272;
+  background: #fffdfb;
+  box-shadow: 0 0 0 2px #b98272;
+}
+
+.service-booking-card:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 2px;
 }
 
 .service-card-header {
   display: flex;
-  gap: 0.75rem;
+  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.service-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #fbf5f2;
-  color: #b98272;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .service-card-header h3 {
   font-size: 1.05rem;
   font-weight: 600;
   color: #2b2625;
-}
-
-.service-duration {
-  font-size: 0.8rem;
-  color: #7d726f;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.15rem;
+  margin: 0;
+  line-height: 1.3;
 }
 
 .service-desc {
-  font-size: 0.875rem;
-  color: #4a3e3b !important;
-  line-height: 1.4;
-  margin-bottom: 1.25rem;
-}
-
-.service-duration {
-  font-size: 0.8rem;
-  color: #5c504d !important;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.15rem;
+  font-size: 0.825rem;
+  color: #6e6461 !important;
+  line-height: 1.45;
+  margin: 0.5rem 0 1rem;
+  flex: 1;
 }
 
 .service-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #f2ded9;
+  border-top: 1px solid #f4eeea;
   padding-top: 0.75rem;
+}
+
+.service-duration {
+  font-size: 0.775rem;
+  color: #7d726f !important;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #faf6f4;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #f0e6e2;
+  font-weight: 500;
 }
 
 .service-price {
   font-weight: 700;
-  color: #9a5a4a !important;
+  color: #2b2625 !important;
   font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.service-price small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #8c807c;
+  margin-left: 2px;
+}
+
+.btn-booking-select {
+  background: #2b2625;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-booking-select:hover {
+  background: #423b39;
 }
 
 .primary-button-sm {
-  background: #b98272;
+  background: #2b2625;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -429,6 +453,11 @@ button, input, select { font: inherit; }
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.primary-button-sm:hover {
+  background: #423b39;
 }
 
 .back-link {
@@ -485,33 +514,43 @@ button, input, select { font: inherit; }
 }
 
 .pro-card {
-  padding: 0.85rem;
-  border: 1px solid #ede3e0;
-  border-radius: 10px;
+  padding: 0.95rem;
+  border: 1px solid #ebe5e1;
+  border-radius: 12px;
   background: #fff;
   text-align: left;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.pro-card:hover {
+  border-color: #d8cec8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(43, 38, 37, 0.05);
 }
 
 .pro-card.active {
   border-color: #b98272;
-  background: #fbf5f2;
+  background: #fffdfb;
+  box-shadow: 0 0 0 2px #b98272;
 }
 
 .pro-avatar-mini {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #e3d2cd;
-  color: #4a3e3b;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #f7ede8;
+  color: #a86c5c;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.825rem;
+  flex-shrink: 0;
 }
 
 .slots-grid {
@@ -790,13 +829,21 @@ button, input, select { font: inherit; }
 }
 
 .stat-box {
-  background: #fff;
-  border: 1px solid #ede3e0;
-  border-radius: 12px;
-  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #ebe5e1;
+  border-radius: 14px;
+  padding: 1.35rem;
   display: flex;
   align-items: center;
   gap: 1rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.stat-box:hover {
+  border-color: #d8cec8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(43, 38, 37, 0.04);
 }
 
 .stat-icon {
@@ -866,19 +913,27 @@ button, input, select { font: inherit; }
 .agenda-item-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.85rem;
-  border-radius: 10px;
-  border: 1px solid #f2ded9;
-  background: #fbf8f7;
+  gap: 0.85rem;
+  padding: 0.95rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid #ebe5e1;
+  background: #ffffff;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.agenda-item-card:hover {
+  border-color: #d8cec8;
+  box-shadow: 0 4px 14px rgba(43, 38, 37, 0.04);
 }
 
 .time-badge {
   font-weight: 700;
-  font-size: 0.875rem;
-  background: #fff;
-  border: 1px solid #ebd8d3;
-  padding: 0.35rem 0.6rem;
+  font-size: 0.825rem;
+  background: #faf6f4;
+  border: 1px solid #f0e6e2;
+  color: #2b2625;
+  padding: 0.3rem 0.55rem;
   border-radius: 6px;
 }
 
@@ -964,68 +1019,108 @@ button, input, select { font: inherit; }
 }
 
 .appointment-block {
-  background: #fff;
-  border: 1px solid #ede3e0;
-  border-radius: 12px;
-  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #ebe5e1;
+  border-radius: 14px;
+  padding: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.appointment-block:hover {
+  border-color: #d8cec8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(43, 38, 37, 0.05);
 }
 
 .block-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
 }
 
 .block-time {
   font-weight: 700;
-  font-size: 0.85rem;
-  color: #b98272;
+  font-size: 0.825rem;
+  color: #2b2625;
+  background: #faf6f4;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #f0e6e2;
 }
 
 .block-client {
   font-size: 1.05rem;
   font-weight: 600;
   margin: 0;
+  color: #2b2625;
 }
 
 .block-service {
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   color: #6e6461;
-  margin: 0.25rem 0 0.75rem;
+  margin: 0.25rem 0 0.85rem;
 }
 
 .block-meta {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.8rem;
-  color: #5c524f;
-  border-top: 1px solid #f6efec;
-  padding-top: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.35rem;
+  font-size: 0.785rem;
+  color: #7d726f;
+  background: #faf7f5;
+  border: 1px solid #f2ece8;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.85rem;
 }
 
 .block-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  border-top: 1px solid #f4eeea;
+  padding-top: 0.75rem;
 }
 
 .btn-sm {
-  padding: 0.35rem 0.6rem;
+  padding: 0.3rem 0.55rem;
   border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid #ebd8d3;
+  font-size: 0.735rem;
+  font-weight: 500;
+  border: 1px solid #e5ded9;
   background: #fff;
+  color: #5c524f;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
 }
 
-.btn-confirm { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
-.btn-progress { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
-.btn-complete { background: #ede7f6; color: #512da8; border-color: #d1c4e9; }
-.btn-cancel { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
+.btn-sm:hover {
+  background: #f7f4f1;
+  color: #2b2625;
+  border-color: #d8cec8;
+}
+
+.btn-sm:focus-visible {
+  outline: 2px solid #b98272;
+  outline-offset: 1px;
+}
+
+.btn-confirm { background: #f2f8f3; color: #2e7d32; border-color: #d7ebd9; }
+.btn-confirm:hover { background: #e8f5ea; color: #1e5622; }
+.btn-progress { background: #f0f6fb; color: #1565c0; border-color: #d4e5f7; }
+.btn-progress:hover { background: #e3f0fc; color: #0d47a1; }
+.btn-complete { background: #f4f1f8; color: #512da8; border-color: #ded6ed; }
+.btn-complete:hover { background: #eae4f3; color: #311b92; }
+.btn-cancel { background: #fdf3f2; color: #c62828; border-color: #fad2d0; }
+.btn-cancel:hover { background: #fce8e6; color: #b71c1c; }
 
 .custom-table {
   width: 100%;
@@ -1054,10 +1149,170 @@ button, input, select { font: inherit; }
 }
 
 .material-card, .pro-admin-card {
-  background: #fbf8f7;
-  border: 1px solid #ebd8d3;
+  background: #ffffff;
+  border: 1px solid #ebe5e1;
+  border-radius: 14px;
+  padding: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.material-card:hover, .pro-admin-card:hover {
+  border-color: #d8cec8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(43, 38, 37, 0.05);
+}
+
+/* Profesionales Admin Card */
+.pro-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+.pro-avatar-big {
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
-  padding: 1.25rem;
+  background: #f7ede8;
+  color: #a86c5c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.pro-info-head {
+  flex: 1;
+  min-width: 0;
+}
+
+.pro-info-head h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #2b2625;
+}
+
+.pro-badge-available {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #2e7d32;
+  font-size: 0.725rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.pro-spec {
+  font-size: 0.825rem;
+  color: #6e6461;
+  line-height: 1.4;
+  margin: 0.25rem 0 0.85rem;
+  flex: 1;
+}
+
+.pro-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.785rem;
+  color: #8c807c;
+  background: #faf7f5;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #f2ece8;
+  margin-bottom: 0.85rem;
+}
+
+.pro-contact span b {
+  color: #5c524f;
+  font-weight: 600;
+}
+
+.pro-footer-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  border-top: 1px solid #f4eeea;
+  padding-top: 0.75rem;
+}
+
+.pro-card-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* Material / Inventario Card */
+.mat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.mat-cat-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9c8e88;
+  background: #f7f4f1;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.35rem;
+}
+
+.mat-head h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #2b2625;
+}
+
+.mat-stock-metric {
+  background: #faf7f5;
+  border: 1px solid #f2ece8;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin: 0.5rem 0 0.85rem;
+}
+
+.mat-stock-label {
+  font-size: 0.725rem;
+  color: #8c807c;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.mat-stock-num {
+  font-size: 1.35rem;
+  color: #2b2625;
+}
+
+.mat-stock-num b {
+  font-weight: 700;
+}
+
+.mat-stock-num small {
+  font-size: 0.85rem;
+  color: #8c807c;
+  font-weight: 500;
+}
+
+.mat-footer {
+  border-top: 1px solid #f4eeea;
+  padding-top: 0.65rem;
+  font-size: 0.75rem;
+  color: #9c918c;
 }
 
 /* Service Admin Card: Minimalista, limpio y moderno */
