@@ -337,5 +337,160 @@ export function runObligatoryScenariosTests() {
     }
   })
 
+  // 21. Auditoría: ABM y Persistencia de Clientes
+  test(21, 'Auditoría: Creación, modificación, consulta y baja de cliente', () => {
+    const created = salonRepo.createClient({
+      name: 'Victoria Auditoría',
+      phone: '11 5555 7788',
+      email: 'victoria@test.com',
+      notes: 'Clienta VIP para auditoría',
+    })
+    if (!created.id || created.name !== 'Victoria Auditoría') {
+      throw new Error('Fallo al persistir cliente')
+    }
+
+    const updated = salonRepo.updateClient(created.id, {
+      name: 'Victoria Auditoría Modificada',
+      phone: '11 5555 7789',
+      notes: 'Notas actualizadas',
+    })
+    if (updated.name !== 'Victoria Auditoría Modificada' || updated.phone !== '11 5555 7789') {
+      throw new Error('Fallo al actualizar cliente')
+    }
+
+    const listed = salonRepo.getClients().find((c) => c.id === created.id)
+    if (!listed || listed.name !== 'Victoria Auditoría Modificada') {
+      throw new Error('Fallo al consultar cliente persistido')
+    }
+
+    salonRepo.deleteClient(created.id)
+    const afterDelete = salonRepo.getClients().find((c) => c.id === created.id)
+    if (afterDelete) {
+      throw new Error('La clienta dada de baja continúa en listado activo')
+    }
+  })
+
+  // 22. Auditoría: ABM y Persistencia de Servicios
+  test(22, 'Auditoría: Creación, actualización y baja lógica de servicio', () => {
+    const srv = salonRepo.createService({
+      categoryId: 'cat-manos',
+      name: 'Kapping Gel Premium Auditoría',
+      description: 'Tratamiento fortalecedor con nivelación',
+      price: 26000,
+      durationMinutes: 70,
+      prepMinutes: 10,
+      cleanupMinutes: 10,
+      depositType: 'percentage',
+      depositValue: 30,
+      allowPublicBooking: true,
+    })
+    if (!srv.id || Number(srv.price) !== 26000) {
+      throw new Error('Fallo al crear servicio')
+    }
+
+    const updatedSrv = salonRepo.updateService(srv.id, {
+      price: 28000,
+      durationMinutes: 80,
+    })
+    if (Number(updatedSrv.price) !== 28000 || updatedSrv.durationMinutes !== 80) {
+      throw new Error('Fallo al modificar servicio')
+    }
+
+    salonRepo.deleteService(srv.id)
+    const activeServices = salonRepo.getServices()
+    if (activeServices.some((s) => s.id === srv.id)) {
+      throw new Error('Servicio dado de baja aún figura activo en catálogo')
+    }
+  })
+
+  // 23. Auditoría: ABM y Persistencia de Profesionales
+  test(23, 'Auditoría: Creación, actualización y baja lógica de profesional', () => {
+    const pro = salonRepo.createProfessional({
+      name: 'Martina Estilista',
+      phone: '11 5555 3322',
+      email: 'martina@atelier.com',
+      specialties: 'Nail art y esculpidas',
+      initials: 'ME',
+      serviceIds: ['srv-esmaltado-semi'],
+    })
+    if (!pro.id || pro.name !== 'Martina Estilista') {
+      throw new Error('Fallo al persistir profesional')
+    }
+
+    const updatedPro = salonRepo.updateProfessional(pro.id, {
+      specialties: 'Especialista Máster en Polygel',
+    })
+    if (updatedPro.specialties !== 'Especialista Máster en Polygel') {
+      throw new Error('Fallo al modificar profesional')
+    }
+
+    salonRepo.deleteProfessional(pro.id)
+    const activePros = salonRepo.getProfessionals()
+    if (activePros.some((p) => p.id === pro.id)) {
+      throw new Error('Profesional desactivada aún figura activa')
+    }
+  })
+
+  // 24. Auditoría: ABM y Persistencia de Materiales e Inventario
+  test(24, 'Auditoría: Creación, edición, stock y baja de materiales', () => {
+    const mat = salonRepo.createMaterial({
+      name: 'Top Coat Brillante No Wipe Test',
+      category: 'Manicuría',
+      unit: 'unidades',
+      currentStock: 25,
+      minimumStock: 5,
+      estimatedCostUnit: 4500,
+    })
+    if (!mat.id || Number(mat.currentStock) !== 25) {
+      throw new Error('Fallo al crear material de inventario')
+    }
+
+    const mov = salonRepo.registerMaterialMovement({
+      materialId: mat.id,
+      type: 'in',
+      quantity: 10,
+      reason: 'Ingreso lote auditoría',
+    })
+    if (Number(mov.material.currentStock) !== 35) {
+      throw new Error('Fallo al actualizar stock con movimiento')
+    }
+
+    salonRepo.deleteMaterial(mat.id)
+    const activeMaterials = salonRepo.getMaterials()
+    if (activeMaterials.some((m) => m.id === mat.id)) {
+      throw new Error('Material eliminado aún figura en inventario activo')
+    }
+  })
+
+  // 25. Auditoría: Bloqueo de horario ocupado o bloqueado
+  test(25, 'Auditoría: Reservar horario ocupado o con profesional no disponible debe rechazarse', () => {
+    const apt1 = salonRepo.createAppointment({
+      clientName: 'Cliente A Colisión',
+      clientPhone: '11 5555 6001',
+      serviceIds: ['srv-esmaltado-semi'],
+      professionalId: 'pro-valentina',
+      date: '2026-11-25',
+      time: '16:00',
+    })
+
+    let rejected = false
+    try {
+      salonRepo.createAppointment({
+        clientName: 'Cliente B Colisión',
+        clientPhone: '11 5555 6002',
+        serviceIds: ['srv-esmaltado-semi'],
+        professionalId: 'pro-valentina',
+        date: '2026-11-25',
+        time: '16:00',
+      })
+    } catch {
+      rejected = true
+    }
+
+    if (!rejected) {
+      throw new Error('No rechazó la superposición de reserva en horario ocupado')
+    }
+  })
+
   return results
 }
