@@ -702,6 +702,64 @@ class SalonRepository {
   // -------------------------
   // INVENTARIO
   // -------------------------
+  createMaterial(input: {
+    name: string
+    category: string
+    unit: string
+    currentStock: number
+    minimumStock: number
+    estimatedCostUnit?: number
+  }) {
+    const newMaterial = {
+      id: `mat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: input.name.trim(),
+      category: input.category.trim(),
+      unit: input.unit.trim(),
+      currentStock: input.currentStock.toFixed(2),
+      minimumStock: input.minimumStock.toFixed(2),
+      estimatedCostUnit: (input.estimatedCostUnit || 0).toFixed(2),
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.materials.unshift(newMaterial)
+    return newMaterial
+  }
+
+  updateMaterial(
+    id: string,
+    input: {
+      name?: string
+      category?: string
+      unit?: string
+      currentStock?: number
+      minimumStock?: number
+      estimatedCostUnit?: number
+    }
+  ) {
+    const mat = this.materials.find((m) => m.id === id)
+    if (!mat) throw new Error('Material no encontrado')
+
+    if (input.name !== undefined) mat.name = input.name.trim()
+    if (input.category !== undefined) mat.category = input.category.trim()
+    if (input.unit !== undefined) mat.unit = input.unit.trim()
+    if (input.currentStock !== undefined) mat.currentStock = input.currentStock.toFixed(2)
+    if (input.minimumStock !== undefined) mat.minimumStock = input.minimumStock.toFixed(2)
+    if (input.estimatedCostUnit !== undefined) mat.estimatedCostUnit = input.estimatedCostUnit.toFixed(2)
+    mat.updatedAt = new Date()
+
+    return mat
+  }
+
+  deleteMaterial(id: string) {
+    const mat = this.materials.find((m) => m.id === id)
+    if (mat) {
+      mat.isActive = false
+      mat.updatedAt = new Date()
+    }
+    return { success: true }
+  }
+
   registerMaterialMovement(input: {
     materialId: string
     type: 'in' | 'out' | 'adjustment' | 'waste'
@@ -720,6 +778,7 @@ class SalonRepository {
     else if (input.type === 'adjustment') updated = input.quantity
 
     mat.currentStock = Math.max(0, updated).toFixed(2)
+    mat.updatedAt = new Date()
 
     const movement = {
       id: `mov-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -735,6 +794,27 @@ class SalonRepository {
 
     this.inventoryMovements.unshift(movement)
     return { material: mat, movement }
+  }
+
+  // -------------------------
+  // CONFIGURACIONES
+  // -------------------------
+  updateSettings(input: Partial<{
+    salonName: string
+    currency: string
+    defaultDepositPercentage: number
+    minCancelHoursNotice: number
+    autoConfirmPublicBookings: boolean
+    allowSimultaneousServices: boolean
+    cancellationPolicyText: string
+    businessHoursStart: string
+    businessHoursEnd: string
+  }>) {
+    this.settings = {
+      ...this.settings,
+      ...input,
+    }
+    return this.settings
   }
 }
 
