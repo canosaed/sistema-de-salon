@@ -73,6 +73,10 @@ export async function rescheduleAppointmentAction(
   return salonRepo.rescheduleAppointment(appointmentId, newDate, newTime)
 }
 
+export async function deleteAppointmentAction(appointmentId: string) {
+  return salonRepo.deleteAppointment(appointmentId)
+}
+
 export async function registerAppointmentPaymentAction(input: {
   appointmentId: string
   amount: number

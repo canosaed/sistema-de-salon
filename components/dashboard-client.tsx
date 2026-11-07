@@ -28,6 +28,7 @@ import {
   WifiOff,
   Filter,
   ChevronLeft,
+  Trash2,
 } from 'lucide-react'
 import {
   getAgendaPeriodRange,
@@ -38,6 +39,7 @@ import {
   createInternalAppointment,
   updateAppointmentStatusAction,
   rescheduleAppointmentAction,
+  deleteAppointmentAction,
   registerAppointmentPaymentAction,
   recordMaterialConsumptionAction,
 } from '@/app/actions/dashboard'
@@ -85,6 +87,12 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [selectedProfessionalFilter, setSelectedProfessionalFilter] = useState('all')
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
+
+  // Filtros de Reservas (Listado Integral)
+  const [reservasSearchQuery, setReservasSearchQuery] = useState('')
+  const [reservasProfessionalFilter, setReservasProfessionalFilter] = useState('all')
+  const [reservasStatusFilter, setReservasStatusFilter] = useState('all')
+  const [reservasPaymentFilter, setReservasPaymentFilter] = useState('all')
 
   // Búsqueda de Clientes
   const [clientSearchQuery, setClientSearchQuery] = useState('')
@@ -215,6 +223,24 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     })
   }, [appointments, agendaPeriodRange, selectedProfessionalFilter, selectedStatusFilter])
 
+  // Filtrado de reservas para el Listado Integral
+  const filteredReservas = useMemo(() => {
+    return appointments.filter((a) => {
+      if (reservasProfessionalFilter !== 'all' && a.professionalId !== reservasProfessionalFilter) return false
+      if (reservasStatusFilter !== 'all' && a.status !== reservasStatusFilter) return false
+      if (reservasPaymentFilter !== 'all' && a.paymentStatus !== reservasPaymentFilter) return false
+      if (reservasSearchQuery.trim()) {
+        const query = reservasSearchQuery.toLowerCase()
+        const matchClient = (a.clientName || '').toLowerCase().includes(query)
+        const matchPhone = (a.clientPhone || '').toLowerCase().includes(query)
+        const matchService = (a.serviceName || '').toLowerCase().includes(query)
+        const matchPro = (a.professional || '').toLowerCase().includes(query)
+        if (!matchClient && !matchPhone && !matchService && !matchPro) return false
+      }
+      return true
+    })
+  }, [appointments, reservasProfessionalFilter, reservasStatusFilter, reservasPaymentFilter, reservasSearchQuery])
+
   // --------------------------------------------------------------------------
   // HANDLERS
   // --------------------------------------------------------------------------
@@ -255,6 +281,18 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         setFormDepositAmount('0')
       } catch (err: any) {
         setFormError(err.message || 'Error al agendar el turno.')
+      }
+    })
+  }
+
+  const handleDeleteAppointment = (appointmentId: string, clientName: string) => {
+    if (!confirm(`¿Estás seguro de eliminar definitivamente la reserva de "${clientName}"?`)) return
+    startTransition(async () => {
+      try {
+        await deleteAppointmentAction(appointmentId)
+        setAppointments((prev) => prev.filter((a) => a.id !== appointmentId))
+      } catch (err: any) {
+        alert(err.message || 'Error al eliminar reserva')
       }
     })
   }
@@ -955,43 +993,233 @@ export default function DashboardClient({ initialData }: DashboardProps) {
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
-                <h3>Listado integral de reservas</h3>
-                <span>{appointments.length} turnos registrados</span>
+                <div>
+                  <h3>Listado integral de reservas</h3>
+                  <span className="panel-card-subtitle">{appointments.length} turnos registrados en total</span>
+                </div>
+                <button
+                  className="primary-button-sm"
+                  onClick={() => {
+                    setFormError('')
+                    setShowNewAppointmentModal(true)
+                  }}
+                >
+                  <Plus size={16} /> Nueva Reserva
+                </button>
               </div>
+
+              {/* Barra de Filtros y Búsqueda de Reservas */}
+              <div className="reservas-filters-bar">
+                <div className="search-bar reservas-search">
+                  <Search size={16} aria-hidden="true" />
+                  <input
+                    placeholder="Buscar por cliente, teléfono, servicio o profesional..."
+                    value={reservasSearchQuery}
+                    onChange={(e) => setReservasSearchQuery(e.target.value)}
+                    aria-label="Buscar en reservas"
+                  />
+                  {reservasSearchQuery && (
+                    <button
+                      type="button"
+                      className="icon-btn-clear"
+                      onClick={() => setReservasSearchQuery('')}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="reservas-filter-controls">
+                  <div className="filter-field">
+                    <label htmlFor="reservas-filter-pro" className="sr-only">Filtrar por profesional</label>
+                    <select
+                      id="reservas-filter-pro"
+                      className="agenda-select"
+                      value={reservasProfessionalFilter}
+                      onChange={(e) => setReservasProfessionalFilter(e.target.value)}
+                    >
+                      <option value="all">Todas las profesionales</option>
+                      {initialData.professionals.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-field">
+                    <label htmlFor="reservas-filter-status" className="sr-only">Filtrar por estado</label>
+                    <select
+                      id="reservas-filter-status"
+                      className="agenda-select"
+                      value={reservasStatusFilter}
+                      onChange={(e) => setReservasStatusFilter(e.target.value)}
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="pending_confirmation">Pendiente confirmación</option>
+                      <option value="confirmed">Confirmado</option>
+                      <option value="in_progress">En curso</option>
+                      <option value="completed">Finalizado</option>
+                      <option value="cancelled">Cancelado</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-field">
+                    <label htmlFor="reservas-filter-payment" className="sr-only">Filtrar por pago</label>
+                    <select
+                      id="reservas-filter-payment"
+                      className="agenda-select"
+                      value={reservasPaymentFilter}
+                      onChange={(e) => setReservasPaymentFilter(e.target.value)}
+                    >
+                      <option value="all">Todos los pagos</option>
+                      <option value="pending">Pago pendiente</option>
+                      <option value="deposit_paid">Señado</option>
+                      <option value="partially_paid">Parcialmente abonado</option>
+                      <option value="paid">Totalmente abonado</option>
+                      <option value="refunded">Reembolsado</option>
+                    </select>
+                  </div>
+
+                  {(reservasSearchQuery || reservasProfessionalFilter !== 'all' || reservasStatusFilter !== 'all' || reservasPaymentFilter !== 'all') && (
+                    <button
+                      type="button"
+                      className="text-link"
+                      style={{ fontSize: '0.82rem', padding: '0.4rem 0.6rem' }}
+                      onClick={() => {
+                        setReservasSearchQuery('')
+                        setReservasProfessionalFilter('all')
+                        setReservasStatusFilter('all')
+                        setReservasPaymentFilter('all')
+                      }}
+                    >
+                      Restablecer filtros
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contador de resultados */}
+              <div className="reservas-results-summary">
+                <span>Mostrando <b>{filteredReservas.length}</b> de <b>{appointments.length}</b> reservas</span>
+              </div>
+
               <div className="table-responsive">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Fecha / Hora</th>
-                      <th>Cliente</th>
-                      <th>Teléfono</th>
-                      <th>Servicio</th>
-                      <th>Profesional</th>
-                      <th>Importe</th>
-                      <th>Estado</th>
-                      <th>Pago</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {appointments.map((apt) => (
-                      <tr key={apt.id}>
-                        <td><b>{apt.date}</b> {apt.time} hs</td>
-                        <td>{apt.clientName}</td>
-                        <td>{apt.clientPhone}</td>
-                        <td>{apt.serviceName}</td>
-                        <td>{apt.professional}</td>
-                        <td>${Number(apt.totalPrice).toLocaleString('es-AR')}</td>
-                        <td><span className={`status-pill ${apt.status}`}>{apt.status}</span></td>
-                        <td><span className={`payment-pill ${apt.paymentStatus}`}>{apt.paymentStatus}</span></td>
-                        <td>
-                          <button className="btn-sm" onClick={() => setShowPaymentModal(apt)}>Cobrar</button>
-                          <button className="btn-sm" onClick={() => setShowRescheduleModal(apt)}>Mover</button>
-                        </td>
+                {filteredReservas.length === 0 ? (
+                  <p className="empty-copy">No se encontraron reservas con los filtros seleccionados.</p>
+                ) : (
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha / Hora</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Servicio</th>
+                        <th>Profesional</th>
+                        <th>Importe</th>
+                        <th>Estado</th>
+                        <th>Pago</th>
+                        <th>Acciones (ABM)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredReservas.map((apt) => (
+                        <tr key={apt.id}>
+                          <td><b>{apt.date}</b> {apt.time} hs</td>
+                          <td>
+                            <strong>{apt.clientName}</strong>
+                            {apt.isPublicBooking && <span className="public-booking-tag" title="Reserva originada online">Online</span>}
+                          </td>
+                          <td>{apt.clientPhone}</td>
+                          <td>{apt.serviceName}</td>
+                          <td>{apt.professional}</td>
+                          <td><b>${Number(apt.totalPrice).toLocaleString('es-AR')}</b></td>
+                          <td>
+                            <span className={`status-pill ${apt.status}`}>
+                              {apt.status === 'confirmed' ? 'Confirmado' :
+                               apt.status === 'pending_confirmation' ? 'Pendiente' :
+                               apt.status === 'in_progress' ? 'En curso' :
+                               apt.status === 'completed' ? 'Finalizado' :
+                               apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`payment-pill ${apt.paymentStatus}`}>
+                              {apt.paymentStatus === 'paid' ? 'Abonado' :
+                               apt.paymentStatus === 'deposit_paid' ? 'Señado' :
+                               apt.paymentStatus === 'refunded' ? 'Reembolsado' : 'Pendiente'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="table-actions-cluster">
+                              {apt.status === 'pending_confirmation' && (
+                                <button
+                                  className="btn-sm btn-confirm"
+                                  onClick={() => handleStatusChange(apt.id, 'confirmed')}
+                                  title="Confirmar reserva"
+                                >
+                                  <CheckCircle size={13} /> Confirmar
+                                </button>
+                              )}
+                              {apt.status === 'confirmed' && (
+                                <button
+                                  className="btn-sm btn-progress"
+                                  onClick={() => handleStatusChange(apt.id, 'in_progress')}
+                                  title="Iniciar atención"
+                                >
+                                  Iniciar
+                                </button>
+                              )}
+                              {apt.status === 'in_progress' && (
+                                <button
+                                  className="btn-sm btn-complete"
+                                  onClick={() => handleStatusChange(apt.id, 'completed')}
+                                  title="Finalizar turno"
+                                >
+                                  Finalizar
+                                </button>
+                              )}
+                              <button
+                                className="btn-sm btn-pay"
+                                onClick={() => setShowPaymentModal(apt)}
+                                title="Registrar seña o cobro"
+                              >
+                                <CreditCard size={13} /> Cobrar
+                              </button>
+                              <button
+                                className="btn-sm btn-reschedule"
+                                onClick={() => {
+                                  setShowRescheduleModal(apt)
+                                  setRescheduleDate(apt.date)
+                                  setRescheduleTime(apt.time)
+                                }}
+                                title="Reprogramar horario"
+                              >
+                                <RotateCcw size={13} /> Mover
+                              </button>
+                              {apt.status !== 'cancelled' ? (
+                                <button
+                                  className="btn-sm btn-cancel"
+                                  onClick={() => setShowCancelModal(apt)}
+                                  title="Cancelar reserva"
+                                >
+                                  <Ban size={13} /> Cancelar
+                                </button>
+                              ) : (
+                                <button
+                                  className="btn-sm btn-cancel"
+                                  onClick={() => handleDeleteAppointment(apt.id, apt.clientName)}
+                                  title="Eliminar registro definitivamente"
+                                >
+                                  <Trash2 size={13} /> Eliminar
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>

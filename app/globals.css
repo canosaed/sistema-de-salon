@@ -1876,6 +1876,95 @@ button, input, select { font: inherit; }
   border-bottom: 1px solid #f2ded9;
 }
 
+/* Reservas (Listado Integral) Filters and Actions */
+.reservas-filters-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #ffffff;
+  border: 1px solid #e5d8d3;
+  border-radius: 9px;
+  padding: 0.5rem 0.85rem;
+  box-shadow: 0 1px 2px rgba(43, 29, 25, 0.03);
+  transition: all 0.15s ease;
+}
+
+.search-bar:focus-within {
+  border-color: #b98272;
+  box-shadow: 0 0 0 3px rgba(185, 130, 114, 0.15);
+}
+
+.search-bar input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: #3e2e2a;
+  width: 100%;
+}
+
+.search-bar.reservas-search {
+  flex: 1;
+  min-width: 260px;
+}
+
+.icon-btn-clear {
+  border: none;
+  background: transparent;
+  color: #a0918c;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.icon-btn-clear:hover {
+  color: #3e2e2a;
+}
+
+.reservas-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.reservas-results-summary {
+  font-size: 0.8rem;
+  color: #8c7872;
+  margin-bottom: 0.75rem;
+}
+
+.public-booking-tag {
+  display: inline-block;
+  margin-left: 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #8a5749;
+  background: #fbf0ec;
+  border: 1px solid #eed6ce;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.table-actions-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
 .materials-grid, .services-admin-grid, .professionals-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
