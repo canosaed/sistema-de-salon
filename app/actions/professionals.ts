@@ -43,3 +43,46 @@ export async function deleteProfessional(id: string) {
   if (!id) throw new Error('ID de profesional no provisto.')
   return salonRepo.deleteProfessional(id)
 }
+
+/**
+ * Operaciones ABM para Turnos y Horarios de Profesionales
+ */
+export async function saveScheduleAction(formData: FormData) {
+  const id = formData.get('id') as string | null
+  const professionalId = formData.get('professionalId') as string
+  const dayOfWeek = parseInt(formData.get('dayOfWeek') as string, 10)
+  const startTime = formData.get('startTime') as string
+  const endTime = formData.get('endTime') as string
+  const breakStartTime = (formData.get('breakStartTime') as string) || null
+  const breakEndTime = (formData.get('breakEndTime') as string) || null
+  const isActive = formData.get('isActive') !== 'false'
+
+  if (id) {
+    return salonRepo.updateSchedule(id, {
+      dayOfWeek,
+      startTime,
+      endTime,
+      breakStartTime,
+      breakEndTime,
+      isActive,
+    })
+  } else {
+    return salonRepo.createSchedule({
+      professionalId,
+      dayOfWeek,
+      startTime,
+      endTime,
+      breakStartTime,
+      breakEndTime,
+      isActive,
+    })
+  }
+}
+
+export async function toggleScheduleAction(id: string) {
+  return salonRepo.toggleScheduleActive(id)
+}
+
+export async function deleteScheduleAction(id: string) {
+  return salonRepo.deleteSchedule(id)
+}

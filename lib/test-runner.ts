@@ -287,5 +287,55 @@ export function runObligatoryScenariosTests() {
     }
   })
 
+  // 20. ABM de Turnos y Horarios de Profesionales
+  test(20, 'ABM y disponibilidad de Turnos y Horarios de Profesionales', () => {
+    const testProId = 'pro-sofia-test'
+    // 1. Create / Upsert de nuevo horario (Lunes = 1)
+    const createdSched = salonRepo.createSchedule({
+      professionalId: testProId,
+      dayOfWeek: 1,
+      startTime: '08:00',
+      endTime: '14:00',
+      breakStartTime: '11:00',
+      breakEndTime: '12:00',
+      isActive: true,
+    })
+    if (!createdSched || createdSched.startTime !== '08:00' || createdSched.dayOfWeek !== 1) {
+      throw new Error('Fallo al crear horario de profesional')
+    }
+
+    // 2. Read / List de horarios de la profesional
+    const proSchedules = salonRepo.getSchedulesByProfessional(testProId)
+    const found = proSchedules.find((s) => s.id === createdSched.id)
+    if (!found) {
+      throw new Error('No se encontró el horario creado en los turnos de la profesional')
+    }
+
+    // 3. Update horario
+    const updated = salonRepo.updateSchedule(createdSched.id, {
+      startTime: '08:30',
+      endTime: '15:00',
+    })
+    if (!updated || updated.startTime !== '08:30' || updated.endTime !== '15:00') {
+      throw new Error('Fallo al actualizar horario de profesional')
+    }
+
+    // 4. Toggle activo / inactivo
+    const toggled = salonRepo.toggleScheduleActive(createdSched.id)
+    if (!toggled || toggled.isActive !== false) {
+      throw new Error('Fallo al alternar estado de disponibilidad del horario')
+    }
+
+    // 5. Delete horario
+    const deleted = salonRepo.deleteSchedule(createdSched.id)
+    if (!deleted) {
+      throw new Error('Fallo al eliminar horario de profesional')
+    }
+    const afterDelete = salonRepo.getSchedulesByProfessional(testProId).find((s) => s.id === createdSched.id)
+    if (afterDelete) {
+      throw new Error('El horario continúa existiendo luego de la eliminación')
+    }
+  })
+
   return results
 }

@@ -29,6 +29,7 @@ import {
   Filter,
   ChevronLeft,
   Trash2,
+  Check,
 } from 'lucide-react'
 import {
   getAgendaPeriodRange,
@@ -45,7 +46,14 @@ import {
 } from '@/app/actions/dashboard'
 import { createClient, updateClient, deleteClient } from '@/app/actions/clients'
 import { createService, updateService, deleteService } from '@/app/actions/services'
-import { createProfessional, updateProfessional, deleteProfessional } from '@/app/actions/professionals'
+import {
+  createProfessional,
+  updateProfessional,
+  deleteProfessional,
+  saveScheduleAction,
+  toggleScheduleAction,
+  deleteScheduleAction,
+} from '@/app/actions/professionals'
 import { createMaterialAction, updateMaterialAction, deleteMaterialAction } from '@/app/actions/inventory'
 import { updateSalonSettingsAction } from '@/app/actions/settings'
 
@@ -61,6 +69,7 @@ interface DashboardProps {
     payments: any[]
     inventoryMovements: any[]
     settings: any
+    schedules?: any[]
   }
 }
 
@@ -75,6 +84,9 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [clients, setClients] = useState<any[]>(initialData.clients)
   const [services, setServices] = useState<any[]>(initialData.services)
   const [professionals, setProfessionals] = useState<any[]>(initialData.professionals)
+  const [schedules, setSchedules] = useState<any[]>(initialData.schedules || [])
+  const [selectedProForSchedules, setSelectedProForSchedules] = useState<any | null>(null)
+  const [isSchedulesModalOpen, setIsSchedulesModalOpen] = useState(false)
   const [materials, setMaterials] = useState<any[]>(initialData.materials)
   const [payments, setPayments] = useState<any[]>(initialData.payments)
   const [inventoryMovements, setInventoryMovements] = useState<any[]>(initialData.inventoryMovements)
@@ -281,6 +293,81 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         setFormDepositAmount('0')
       } catch (err: any) {
         setFormError(err.message || 'Error al agendar el turno.')
+      }
+    })
+  }
+
+  const handleOpenSchedulesModal = (pro: any) => {
+    setSelectedProForSchedules(pro)
+    setIsSchedulesModalOpen(true)
+  }
+
+  const handleSaveSchedule = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedProForSchedules) return
+    const formData = new FormData(e.currentTarget)
+    formData.set('professionalId', selectedProForSchedules.id)
+
+    startTransition(async () => {
+      try {
+        const result = await saveScheduleAction(formData)
+        setSchedules((prev) => {
+          const index = prev.findIndex((s) => s.id === result.id)
+          if (index >= 0) {
+            const next = [...prev]
+            next[index] = result
+            return next
+          }
+          return [...prev, result]
+        })
+        const form = e.target as HTMLFormElement
+        form.reset()
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleToggleSchedule = (id: string) => {
+    startTransition(async () => {
+      try {
+        const updated = await toggleScheduleAction(id)
+        setSchedules((prev) => prev.map((s) => (s.id === id ? updated : s)))
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleUpdateScheduleRow = (sched: any, field: string, val: any) => {
+    startTransition(async () => {
+      try {
+        const fd = new FormData()
+        fd.set('id', sched.id)
+        fd.set('professionalId', sched.professionalId)
+        fd.set('dayOfWeek', sched.dayOfWeek.toString())
+        fd.set('startTime', field === 'startTime' ? val : sched.startTime)
+        fd.set('endTime', field === 'endTime' ? val : sched.endTime)
+        fd.set('breakStartTime', field === 'breakStartTime' ? val : sched.breakStartTime || '')
+        fd.set('breakEndTime', field === 'breakEndTime' ? val : sched.breakEndTime || '')
+        fd.set('isActive', field === 'isActive' ? String(val) : String(sched.isActive))
+
+        const updated = await saveScheduleAction(fd)
+        setSchedules((prev) => prev.map((s) => (s.id === sched.id ? updated : s)))
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleDeleteSchedule = (id: string) => {
+    if (!confirm('¿Eliminar la configuración horaria para este día?')) return
+    startTransition(async () => {
+      try {
+        await deleteScheduleAction(id)
+        setSchedules((prev) => prev.filter((s) => s.id !== id))
+      } catch (err: any) {
+        alert(err.message)
       }
     })
   }
@@ -1447,8 +1534,55 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       <span><b>Tel:</b> {p.phone}</span>
                       {p.email && <span><b>Email:</b> {p.email}</span>}
                     </div>
+
+                    {/* Turnos y Horarios de atención */}
+                    <div className="pro-schedule-section">
+                      <div className="pro-schedule-header">
+                        <span className="pro-schedule-title">Turnos y Horarios</span>
+                        <button
+                          type="button"
+                          className="btn-schedule-manage"
+                          onClick={() => handleOpenSchedulesModal(p)}
+                        >
+                          Configurar
+                        </button>
+                      </div>
+                      <div className="pro-schedule-badges">
+                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayName, idx) => {
+                          const dayNum = (idx + 1) % 7
+                          const sched = schedules.find((s) => s.professionalId === p.id && s.dayOfWeek === dayNum)
+                          const isWorking = sched && sched.isActive
+                          return (
+                            <div
+                              key={dayNum}
+                              className={`sched-badge ${isWorking ? 'sched-badge-active' : 'sched-badge-inactive'}`}
+                              title={
+                                isWorking
+                                  ? `${sched.startTime} - ${sched.endTime}${
+                                      sched.breakStartTime ? ` (Pausa ${sched.breakStartTime} - ${sched.breakEndTime})` : ''
+                                    }`
+                                  : 'Franco / No disponible'
+                              }
+                            >
+                              <span className="sched-badge-day">{dayName}</span>
+                              <span className="sched-badge-hours">
+                                {isWorking ? `${sched.startTime} - ${sched.endTime}` : 'Franco'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
                     <div className="pro-footer-row">
                       <div className="pro-card-actions">
+                        <button
+                          type="button"
+                          className="btn-link-schedule"
+                          onClick={() => handleOpenSchedulesModal(p)}
+                        >
+                          Turnos y Horarios
+                        </button>
                         <button
                           className="btn-link-edit"
                           onClick={() => {
@@ -2350,6 +2484,214 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       {/* -------------------------------------------------------------------- */}
       {/* MODAL: ABM PROFESIONAL */}
       {/* -------------------------------------------------------------------- */}
+      {/* Modal ABM de Turnos y Horarios de Atención por Profesional */}
+      {isSchedulesModalOpen && selectedProForSchedules && (
+        <div className="modal-backdrop" onClick={() => setIsSchedulesModalOpen(false)}>
+          <div
+            className="modal-box modal-box-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title-sched"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-head">
+              <div>
+                <h3 id="modal-title-sched">Turnos y Horarios de Atención</h3>
+                <p className="modal-subtitle">
+                  Configuración de días, franjas horarias y descansos para <b>{selectedProForSchedules.name}</b>
+                </p>
+              </div>
+              <button
+                className="icon-btn"
+                onClick={() => setIsSchedulesModalOpen(false)}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="sched-modal-content">
+              {/* Tabla de horarios semanales */}
+              <div className="sched-table-container">
+                <table className="sched-table">
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Estado</th>
+                      <th>Horario de Atención</th>
+                      <th>Pausa / Descanso</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { num: 1, name: 'Lunes' },
+                      { num: 2, name: 'Martes' },
+                      { num: 3, name: 'Miércoles' },
+                      { num: 4, name: 'Jueves' },
+                      { num: 5, name: 'Viernes' },
+                      { num: 6, name: 'Sábado' },
+                      { num: 0, name: 'Domingo' },
+                    ].map((d) => {
+                      const item = schedules.find(
+                        (s) => s.professionalId === selectedProForSchedules.id && s.dayOfWeek === d.num
+                      )
+
+                      return (
+                        <tr key={d.num} className={item?.isActive ? 'row-active' : 'row-inactive'}>
+                          <td className="font-semibold text-color-main">{d.name}</td>
+                          <td>
+                            {item ? (
+                              <button
+                                type="button"
+                                className={`sched-toggle-btn ${item.isActive ? 'btn-active' : 'btn-inactive'}`}
+                                onClick={() => handleToggleSchedule(item.id)}
+                              >
+                                {item.isActive ? <Check size={14} /> : <Ban size={14} />}
+                                <span>{item.isActive ? 'Atiende' : 'Franco'}</span>
+                              </button>
+                            ) : (
+                              <span className="sched-empty-badge">Sin horario</span>
+                            )}
+                          </td>
+                          <td>
+                            {item ? (
+                              <div className="sched-time-inputs">
+                                <span className="text-xs text-neutral-400">Desde</span>
+                                <input
+                                  type="time"
+                                  className="sched-inline-input"
+                                  defaultValue={item.startTime}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== item.startTime) {
+                                      handleUpdateScheduleRow(item, 'startTime', e.target.value)
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs text-neutral-400">Hasta</span>
+                                <input
+                                  type="time"
+                                  className="sched-inline-input"
+                                  defaultValue={item.endTime}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== item.endTime) {
+                                      handleUpdateScheduleRow(item, 'endTime', e.target.value)
+                                    }
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-xs italic text-neutral-400">Sin franja asignada (Franco)</span>
+                            )}
+                          </td>
+                          <td>
+                            {item && (
+                              <div className="sched-time-inputs">
+                                <span className="text-xs text-neutral-400">Pausa</span>
+                                <input
+                                  type="time"
+                                  className="sched-inline-input"
+                                  defaultValue={item.breakStartTime || ''}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== (item.breakStartTime || '')) {
+                                      handleUpdateScheduleRow(item, 'breakStartTime', e.target.value || null)
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs text-neutral-400">a</span>
+                                <input
+                                  type="time"
+                                  className="sched-inline-input"
+                                  defaultValue={item.breakEndTime || ''}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== (item.breakEndTime || '')) {
+                                      handleUpdateScheduleRow(item, 'breakEndTime', e.target.value || null)
+                                    }
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            {item && (
+                              <button
+                                type="button"
+                                className="icon-btn-danger"
+                                title="Eliminar este horario"
+                                onClick={() => handleDeleteSchedule(item.id)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Formulario rápido para agregar o restablecer horario */}
+              <div className="sched-quick-add">
+                <h4>Agregar o restablecer día de atención</h4>
+                <form onSubmit={handleSaveSchedule} className="sched-form">
+                  <div className="sched-form-row">
+                    <div className="sched-form-field">
+                      <label>Día</label>
+                      <select name="dayOfWeek" defaultValue="1" required className="sched-select">
+                        <option value="1">Lunes</option>
+                        <option value="2">Martes</option>
+                        <option value="3">Miércoles</option>
+                        <option value="4">Jueves</option>
+                        <option value="5">Viernes</option>
+                        <option value="6">Sábado</option>
+                        <option value="0">Domingo</option>
+                      </select>
+                    </div>
+
+                    <div className="sched-form-field">
+                      <label>Hora Inicio</label>
+                      <input type="time" name="startTime" defaultValue="09:00" required className="sched-input" />
+                    </div>
+
+                    <div className="sched-form-field">
+                      <label>Hora Fin</label>
+                      <input type="time" name="endTime" defaultValue="18:00" required className="sched-input" />
+                    </div>
+
+                    <div className="sched-form-field">
+                      <label>Descanso Inicio</label>
+                      <input type="time" name="breakStartTime" defaultValue="13:00" className="sched-input" />
+                    </div>
+
+                    <div className="sched-form-field">
+                      <label>Descanso Fin</label>
+                      <input type="time" name="breakEndTime" defaultValue="14:00" className="sched-input" />
+                    </div>
+
+                    <div className="sched-form-field sched-submit-field">
+                      <button type="submit" className="btn-primary-compact">
+                        <Plus size={15} /> Guardar
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setIsSchedulesModalOpen(false)}
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showProfessionalModal && (
         <div className="modal-backdrop" onClick={() => setShowProfessionalModal(null)}>
           <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-pro" onClick={(e) => e.stopPropagation()}>

@@ -2741,3 +2741,326 @@ button, input, select { font: inherit; }
   font-weight: 600;
   font-size: 0.95rem;
 }
+
+/* ==========================================================================
+   TURNOS Y HORARIOS DE ATENCIÓN (PROFESIONALES)
+   ========================================================================== */
+
+.pro-schedule-section {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e8dfd8;
+}
+
+.pro-schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.pro-schedule-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7b6258;
+}
+
+.btn-schedule-manage {
+  background: transparent;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a45339;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-schedule-manage:hover {
+  background: #fbf2ec;
+  color: #8c3820;
+}
+
+.pro-schedule-badges {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+
+@media (min-width: 640px) {
+  .pro-schedule-badges {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.sched-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.2rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.sched-badge-active {
+  background: #f4eee9;
+  border: 1px solid #dfd3cb;
+  color: #4a3832;
+}
+
+.sched-badge-inactive {
+  background: #faf7f5;
+  border: 1px dashed #e5ded9;
+  color: #a89891;
+}
+
+.sched-badge-day {
+  font-weight: 700;
+  font-size: 0.68rem;
+}
+
+.sched-badge-hours {
+  font-size: 0.62rem;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.btn-link-schedule {
+  background: transparent;
+  border: none;
+  color: #7b5847;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-link-schedule:hover {
+  background: #f2ebe5;
+  color: #38241f;
+}
+
+/* Modal amplio para configuración de turnos y disponibilidad */
+.modal-box-wide {
+  max-width: 840px !important;
+  width: 95%;
+}
+
+.sched-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.sched-table-container {
+  overflow-x: auto;
+  border: 1px solid #ebe2dc;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sched-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.sched-table th {
+  background: #faf5f1;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  font-weight: 600;
+  color: #5c453d;
+  border-bottom: 1px solid #ebe2dc;
+}
+
+.sched-table td {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #f3ece7;
+  vertical-align: middle;
+}
+
+.sched-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sched-table tr.row-inactive {
+  background-color: #faf8f6;
+  opacity: 0.85;
+}
+
+.sched-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.sched-toggle-btn.btn-active {
+  background: #eaf5ec;
+  color: #276738;
+  border-color: #c4e4cb;
+}
+
+.sched-toggle-btn.btn-active:hover {
+  background: #d8edd9;
+}
+
+.sched-toggle-btn.btn-inactive {
+  background: #f4ede8;
+  color: #8c6a5e;
+  border-color: #ded1c8;
+}
+
+.sched-toggle-btn.btn-inactive:hover {
+  background: #eadece;
+}
+
+.sched-empty-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #f0ebe7;
+  color: #8c7b74;
+  font-size: 0.72rem;
+}
+
+.sched-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sched-inline-input {
+  width: auto !important;
+  max-width: 95px !important;
+  margin: 0 !important;
+  padding: 0.25rem 0.4rem !important;
+  font-size: 0.8rem !important;
+  height: 28px !important;
+  border: 1px solid #dcd1c8 !important;
+  border-radius: 4px !important;
+  background: #ffffff !important;
+  color: #38241f !important;
+}
+
+.sched-inline-input:focus {
+  border-color: #a45339 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(164, 83, 57, 0.15);
+}
+
+.icon-btn-danger {
+  background: transparent;
+  border: none;
+  color: #a3483b;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.icon-btn-danger:hover {
+  background: #fde8e5;
+  color: #87291d;
+}
+
+/* Quick Add Form */
+.sched-quick-add {
+  background: #faf6f3;
+  border: 1px solid #ebdcd3;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.sched-quick-add h4 {
+  margin: 0 0 0.65rem 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4a362f;
+}
+
+.sched-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.sched-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 120px;
+}
+
+.sched-form-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #665249;
+  margin: 0;
+}
+
+.sched-select,
+.sched-input {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.82rem !important;
+  height: 32px !important;
+  border: 1px solid #d4c5bb !important;
+  border-radius: 5px !important;
+  background: #ffffff !important;
+  color: #2b1f1a !important;
+}
+
+.sched-select:focus,
+.sched-input:focus {
+  border-color: #a45339 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(164, 83, 57, 0.15);
+}
+
+.sched-submit-field {
+  flex: 0 0 auto;
+}
+
+.btn-primary-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 32px;
+  padding: 0 0.9rem;
+  background: #2b1f1a;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-primary-compact:hover {
+  background: #46342d;
+}
