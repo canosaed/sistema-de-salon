@@ -1343,105 +1343,159 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {activeTab === 'Configuración' && (
           <div className="tab-content">
-            <div className="panel-card">
+            <div className="panel-card config-panel-card">
               <div className="panel-card-head">
                 <div>
                   <h3>Parámetros del Salón</h3>
-                  <p>Políticas de reserva, señas requeridas, anticipación y reglas de atención</p>
+                  <span className="panel-card-subtitle">Políticas de reserva, señas requeridas, anticipación y reglas de atención</span>
                 </div>
               </div>
-              <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
-                <div className="input-row">
-                  <label>
-                    Nombre del Salón:
-                    <input
-                      required
-                      value={settingsForm.salonName}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, salonName: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Moneda Oficial:
-                    <input
-                      required
-                      value={settingsForm.currency}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
+              <form onSubmit={handleSaveSettings} className="settings-form">
+                {/* Sección 1: Datos Generales */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Identidad y Moneda</h4>
+                    <p>Información básica visible para las clientas y facturación</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Nombre del Salón</span>
+                      <input
+                        required
+                        className="field-input"
+                        value={settingsForm.salonName}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, salonName: e.target.value })}
+                        placeholder="Ej. Atelier Beauty Studio"
+                      />
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Moneda Oficial</span>
+                      <input
+                        required
+                        className="field-input"
+                        value={settingsForm.currency}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
+                        placeholder="ARS"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 2: Señas y Cancelaciones */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Políticas de Reserva y Señas</h4>
+                    <p>Condiciones comerciales para asegurar los turnos solicitados</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Porcentaje de Seña por Defecto (%)</span>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        max="100"
+                        className="field-input"
+                        value={settingsForm.defaultDepositPercentage}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, defaultDepositPercentage: Number(e.target.value) })}
+                      />
+                      <small className="field-helper">Porcentaje sugerido al agendar nuevos servicios</small>
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Anticipación mínima para cancelar (horas)</span>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        className="field-input"
+                        value={settingsForm.minCancelHoursNotice}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, minCancelHoursNotice: Number(e.target.value) })}
+                      />
+                      <small className="field-helper">Margen de aviso para no penalizar la seña</small>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 3: Horarios de Atención */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Horarios de Atención</h4>
+                    <p>Franja horaria para asignación de turnos y agenda online</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Horario de Apertura</span>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={settingsForm.businessHoursStart}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursStart: e.target.value })}
+                      />
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Horario de Cierre</span>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={settingsForm.businessHoursEnd}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursEnd: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 4: Reglas y Checklist */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Reglas de Agendamiento Online</h4>
+                    <p>Comportamiento automático para el portal público</p>
+                  </div>
+                  <div className="settings-checklist-grid">
+                    <label className="checklist-card">
+                      <input
+                        type="checkbox"
+                        className="custom-checkbox"
+                        checked={settingsForm.autoConfirmPublicBookings}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, autoConfirmPublicBookings: e.target.checked })}
+                      />
+                      <div className="checklist-card-info">
+                        <b>Confirmar automáticamente reservas online</b>
+                        <p>Los turnos tomados desde el portal web quedan confirmados sin requerir visto bueno manual.</p>
+                      </div>
+                    </label>
+                    <label className="checklist-card">
+                      <input
+                        type="checkbox"
+                        className="custom-checkbox"
+                        checked={settingsForm.allowSimultaneousServices}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allowSimultaneousServices: e.target.checked })}
+                      />
+                      <div className="checklist-card-info">
+                        <b>Habilitar servicios simultáneos</b>
+                        <p>Permite agendar turnos superpuestos con diferentes profesionales en el mismo horario.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 5: Textos de Políticas */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Texto de Políticas al Cliente</h4>
+                    <p>Mensaje que figurará en el comprobante y portal público de reserva</p>
+                  </div>
+                  <label className="field-group">
+                    <textarea
+                      rows={3}
+                      className="field-textarea"
+                      value={settingsForm.cancellationPolicyText}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, cancellationPolicyText: e.target.value })}
+                      placeholder="Ej. Cancelaciones con al menos 24 hs de anticipación para conservar la seña..."
                     />
                   </label>
                 </div>
 
-                <div className="input-row">
-                  <label>
-                    Porcentaje de Seña por Defecto (%):
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      max="100"
-                      value={settingsForm.defaultDepositPercentage}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, defaultDepositPercentage: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label>
-                    Anticipación mínima para cancelar (horas):
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={settingsForm.minCancelHoursNotice}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, minCancelHoursNotice: Number(e.target.value) })}
-                    />
-                  </label>
-                </div>
-
-                <div className="input-row">
-                  <label>
-                    Horario de Apertura:
-                    <input
-                      type="time"
-                      value={settingsForm.businessHoursStart}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursStart: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Horario de Cierre:
-                    <input
-                      type="time"
-                      value={settingsForm.businessHoursEnd}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursEnd: e.target.value })}
-                    />
-                  </label>
-                </div>
-
-                <div style={{ display: 'flex', gap: '2rem', padding: '1rem', background: '#faf5f3', borderRadius: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={settingsForm.autoConfirmPublicBookings}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, autoConfirmPublicBookings: e.target.checked })}
-                    />
-                    <b>Confirmar automáticamente reservas online</b>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={settingsForm.allowSimultaneousServices}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, allowSimultaneousServices: e.target.checked })}
-                    />
-                    <b>Habilitar servicios simultáneos</b>
-                  </label>
-                </div>
-
-                <label>
-                  Texto de Políticas de Reserva y Cancelación:
-                  <textarea
-                    rows={3}
-                    value={settingsForm.cancellationPolicyText}
-                    onChange={(e) => setSettingsForm({ ...settingsForm, cancellationPolicyText: e.target.value })}
-                  />
-                </label>
-
-                <div>
+                <div className="settings-footer">
                   <button type="submit" className="primary-button-accent" disabled={isPending}>
                     {isPending ? 'Guardando cambios...' : 'Guardar Parámetros de Configuración'}
                   </button>
