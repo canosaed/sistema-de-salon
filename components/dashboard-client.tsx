@@ -732,34 +732,67 @@ export default function DashboardClient({ initialData }: DashboardProps) {
           <div className="tab-content">
             <div className="agenda-filters-bar">
               <div className="filter-group">
-                <Filter size={16} />
-                <select
-                  value={selectedProfessionalFilter}
-                  onChange={(e) => setSelectedProfessionalFilter(e.target.value)}
-                >
-                  <option value="all">Todas las profesionales</option>
-                  {initialData.professionals.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                <span className="filter-icon-wrapper" aria-hidden="true">
+                  <Filter size={15} />
+                </span>
+                <div className="filter-field">
+                  <label htmlFor="agenda-filter-pro" className="sr-only">Filtrar por profesional</label>
+                  <select
+                    id="agenda-filter-pro"
+                    className="agenda-select"
+                    value={selectedProfessionalFilter}
+                    onChange={(e) => setSelectedProfessionalFilter(e.target.value)}
+                  >
+                    <option value="all">Todas las profesionales</option>
+                    {initialData.professionals.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                <select
-                  value={selectedStatusFilter}
-                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="pending_confirmation">Pendiente confirmación</option>
-                  <option value="confirmed">Confirmado</option>
-                  <option value="in_progress">En curso</option>
-                  <option value="completed">Finalizado</option>
-                  <option value="cancelled">Cancelado</option>
-                </select>
+                <div className="filter-field">
+                  <label htmlFor="agenda-filter-status" className="sr-only">Filtrar por estado</label>
+                  <select
+                    id="agenda-filter-status"
+                    className="agenda-select"
+                    value={selectedStatusFilter}
+                    onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="pending_confirmation">Pendiente confirmación</option>
+                    <option value="confirmed">Confirmado</option>
+                    <option value="in_progress">En curso</option>
+                    <option value="completed">Finalizado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="view-toggle">
-                <button className={`view-btn ${agendaView === 'day' ? 'active' : ''}`} onClick={() => setAgendaView('day')}>Día</button>
-                <button className={`view-btn ${agendaView === 'week' ? 'active' : ''}`} onClick={() => setAgendaView('week')}>Semana</button>
-                <button className={`view-btn ${agendaView === 'month' ? 'active' : ''}`} onClick={() => setAgendaView('month')}>Mes</button>
+              <div className="view-toggle" role="group" aria-label="Vista del calendario">
+                <button
+                  type="button"
+                  className={`view-btn ${agendaView === 'day' ? 'active' : ''}`}
+                  onClick={() => setAgendaView('day')}
+                  aria-pressed={agendaView === 'day'}
+                >
+                  Día
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${agendaView === 'week' ? 'active' : ''}`}
+                  onClick={() => setAgendaView('week')}
+                  aria-pressed={agendaView === 'week'}
+                >
+                  Semana
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${agendaView === 'month' ? 'active' : ''}`}
+                  onClick={() => setAgendaView('month')}
+                  aria-pressed={agendaView === 'month'}
+                >
+                  Mes
+                </button>
               </div>
             </div>
 
@@ -772,14 +805,33 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     <div key={apt.id} className={`appointment-block ${apt.status}`}>
                       <div className="block-top">
                         <span className="block-time">{apt.date} · {apt.time} hs</span>
-                        <span className={`status-pill ${apt.status}`}>{apt.status}</span>
+                        <span className={`status-pill ${apt.status}`}>
+                          {apt.status === 'confirmed' ? 'Confirmado' :
+                           apt.status === 'pending_confirmation' ? 'Pendiente' :
+                           apt.status === 'in_progress' ? 'En curso' :
+                           apt.status === 'completed' ? 'Finalizado' :
+                           apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                        </span>
                       </div>
                       <h4 className="block-client">{apt.clientName}</h4>
                       <p className="block-service">{apt.serviceName}</p>
                       <div className="block-meta">
-                        <span>Profesional: <b>{apt.professional}</b></span>
-                        <span>Total: <b>${Number(apt.totalPrice).toLocaleString('es-AR')}</b></span>
-                        <span className={`payment-pill ${apt.paymentStatus}`}>Pago: {apt.paymentStatus}</span>
+                        <div className="meta-row">
+                          <span className="meta-label">Profesional</span>
+                          <span className="meta-value">{apt.professional}</span>
+                        </div>
+                        <div className="meta-row">
+                          <span className="meta-label">Total</span>
+                          <span className="meta-value price">${Number(apt.totalPrice).toLocaleString('es-AR')}</span>
+                        </div>
+                        <div className="meta-row">
+                          <span className="meta-label">Estado de pago</span>
+                          <span className={`payment-pill ${apt.paymentStatus}`}>
+                            {apt.paymentStatus === 'paid' ? 'Abonado' :
+                             apt.paymentStatus === 'deposit_paid' ? 'Señado' :
+                             apt.paymentStatus === 'refunded' ? 'Reembolsado' : 'Pendiente'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Botones de acción del turno */}
@@ -1513,24 +1565,27 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         <div className="modal-backdrop" onClick={() => setShowNewAppointmentModal(false)}>
           <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-new-apt" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3 id="modal-title-new-apt">Crear Nuevo Turno Interno</h3>
+              <div>
+                <h3 id="modal-title-new-apt">Crear Nuevo Turno Interno</h3>
+                <span className="modal-subtitle">Asigná fecha, servicio, clienta y condiciones de pago</span>
+              </div>
               <button className="icon-btn" onClick={() => setShowNewAppointmentModal(false)} aria-label="Cerrar modal">
                 <X size={18} />
               </button>
             </div>
             {formError && <p className="error-copy">{formError}</p>}
-            <form onSubmit={handleCreateInternalAppointment}>
-              <div className="client-toggle-group">
+            <form onSubmit={handleCreateInternalAppointment} className="modern-form">
+              <div className="form-toggle-segment" role="group" aria-label="Tipo de clienta">
                 <button
                   type="button"
-                  className={formClientMode === 'existing' ? 'active' : ''}
+                  className={`segment-btn ${formClientMode === 'existing' ? 'active' : ''}`}
                   onClick={() => setFormClientMode('existing')}
                 >
                   Clienta Existente
                 </button>
                 <button
                   type="button"
-                  className={formClientMode === 'new' ? 'active' : ''}
+                  className={`segment-btn ${formClientMode === 'new' ? 'active' : ''}`}
                   onClick={() => setFormClientMode('new')}
                 >
                   Nueva Clienta
@@ -1538,14 +1593,15 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               </div>
 
               {formClientMode === 'existing' ? (
-                <label>
-                  Seleccionar Clienta:
+                <label className="field-group">
+                  <span className="field-label">Seleccionar Clienta</span>
                   <select
+                    className="field-input field-select"
                     value={formClientId}
                     onChange={(e) => setFormClientId(e.target.value)}
                     required
                   >
-                    <option value="">-- Seleccionar --</option>
+                    <option value="">-- Seleccionar de la lista --</option>
                     {clients.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} · {c.phone}
@@ -1555,19 +1611,21 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 </label>
               ) : (
                 <div className="input-row">
-                  <label>
-                    Nombre y Apellido:
+                  <label className="field-group">
+                    <span className="field-label">Nombre y Apellido</span>
                     <input
                       required
+                      className="field-input"
                       value={formClientName}
                       onChange={(e) => setFormClientName(e.target.value)}
                       placeholder="Ej. Valentina Ramos"
                     />
                   </label>
-                  <label>
-                    Teléfono:
+                  <label className="field-group">
+                    <span className="field-label">Teléfono / WhatsApp</span>
                     <input
                       required
+                      className="field-input"
                       value={formClientPhone}
                       onChange={(e) => setFormClientPhone(e.target.value)}
                       placeholder="11 5555 1234"
@@ -1576,48 +1634,54 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 </div>
               )}
 
-              <label>
-                Servicio:
-                <select
-                  value={formServiceId}
-                  onChange={(e) => setFormServiceId(e.target.value)}
-                  required
-                >
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} · ${Number(s.price).toLocaleString('es-AR')}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="input-row">
+                <label className="field-group">
+                  <span className="field-label">Servicio</span>
+                  <select
+                    className="field-input field-select"
+                    value={formServiceId}
+                    onChange={(e) => setFormServiceId(e.target.value)}
+                    required
+                  >
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} · ${Number(s.price).toLocaleString('es-AR')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label>
-                Profesional Responsable:
-                <select
-                  value={formProId}
-                  onChange={(e) => setFormProId(e.target.value)}
-                  required
-                >
-                  {initialData.professionals.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </label>
+                <label className="field-group">
+                  <span className="field-label">Profesional Responsable</span>
+                  <select
+                    className="field-input field-select"
+                    value={formProId}
+                    onChange={(e) => setFormProId(e.target.value)}
+                    required
+                  >
+                    {initialData.professionals.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
               <div className="input-row">
-                <label>
-                  Fecha:
+                <label className="field-group">
+                  <span className="field-label">Fecha del Turno</span>
                   <input
                     type="date"
+                    className="field-input"
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
                     required
                   />
                 </label>
-                <label>
-                  Hora:
+                <label className="field-group">
+                  <span className="field-label">Horario</span>
                   <input
                     type="time"
+                    className="field-input"
                     value={formTime}
                     onChange={(e) => setFormTime(e.target.value)}
                     required
@@ -1626,17 +1690,22 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               </div>
 
               <div className="input-row">
-                <label>
-                  Seña Inicial (ARS):
+                <label className="field-group">
+                  <span className="field-label">Seña Inicial (ARS)</span>
                   <input
                     type="number"
+                    min="0"
+                    className="field-input"
                     value={formDepositAmount}
                     onChange={(e) => setFormDepositAmount(e.target.value)}
+                    placeholder="0"
                   />
+                  <small className="field-helper">Monto cobrado al agendar</small>
                 </label>
-                <label>
-                  Medio de Pago Seña:
+                <label className="field-group">
+                  <span className="field-label">Medio de Pago Seña</span>
                   <select
+                    className="field-input field-select"
                     value={formPaymentMethod}
                     onChange={(e) => setFormPaymentMethod(e.target.value as any)}
                   >
@@ -1644,16 +1713,18 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     <option value="transfer">Transferencia</option>
                     <option value="card">Tarjeta</option>
                   </select>
+                  <small className="field-helper">Canal de recepción del pago</small>
                 </label>
               </div>
 
-              <label>
-                Observaciones:
+              <label className="field-group">
+                <span className="field-label">Observaciones y Preferencias</span>
                 <textarea
                   rows={2}
+                  className="field-textarea"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="Detalles sobre diseño, preferencias o alergias"
+                  placeholder="Detalles sobre diseño, requerimientos especiales o alergias"
                 />
               </label>
 
@@ -1677,50 +1748,73 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         <div className="modal-backdrop" onClick={() => setShowPaymentModal(null)}>
           <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-payment" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3 id="modal-title-payment">Registrar Pago / Seña</h3>
+              <div>
+                <h3 id="modal-title-payment">Registrar Pago / Seña</h3>
+                <span className="modal-subtitle">Asentá cobros totales, parciales o señas del turno</span>
+              </div>
               <button className="icon-btn" onClick={() => setShowPaymentModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
-            <div className="payment-target-info">
-              <p>Turno: <b>{showPaymentModal.serviceName}</b></p>
-              <p>Cliente: <b>{showPaymentModal.clientName}</b></p>
-              <p>Total a abonar: <b>${Number(showPaymentModal.totalPrice).toLocaleString('es-AR')} ARS</b></p>
+            <div className="payment-target-card">
+              <div className="payment-target-item">
+                <span className="payment-target-label">Servicio</span>
+                <span className="payment-target-val">{showPaymentModal.serviceName}</span>
+              </div>
+              <div className="payment-target-item">
+                <span className="payment-target-label">Clienta</span>
+                <span className="payment-target-val">{showPaymentModal.clientName}</span>
+              </div>
+              <div className="payment-target-item highlight">
+                <span className="payment-target-label">Total a abonar</span>
+                <span className="payment-target-val">${Number(showPaymentModal.totalPrice).toLocaleString('es-AR')} ARS</span>
+              </div>
             </div>
-            <form onSubmit={handleRegisterPayment}>
-              <label>
-                Importe (ARS):
+            <form onSubmit={handleRegisterPayment} className="modern-form">
+              <label className="field-group">
+                <span className="field-label">Importe a registrar (ARS)</span>
                 <input
                   type="number"
                   required
+                  min="1"
+                  className="field-input"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder="Ej. 10000"
                 />
               </label>
               <div className="input-row">
-                <label>
-                  Tipo de Operación:
-                  <select value={paymentType} onChange={(e) => setPaymentType(e.target.value as any)}>
+                <label className="field-group">
+                  <span className="field-label">Tipo de Operación</span>
+                  <select
+                    className="field-input field-select"
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value as any)}
+                  >
                     <option value="deposit">Seña</option>
                     <option value="partial">Pago parcial</option>
                     <option value="full">Pago total</option>
                     <option value="refund">Reembolso / Devolución</option>
                   </select>
                 </label>
-                <label>
-                  Medio de Pago:
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)}>
+                <label className="field-group">
+                  <span className="field-label">Medio de Pago</span>
+                  <select
+                    className="field-input field-select"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  >
                     <option value="cash">Efectivo</option>
                     <option value="transfer">Transferencia</option>
                     <option value="card">Tarjeta</option>
                   </select>
                 </label>
               </div>
-              <label>
-                Comprobante o Detalle:
+              <label className="field-group">
+                <span className="field-label">Comprobante o Detalle (opcional)</span>
                 <input
+                  className="field-input"
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  placeholder="Nro comprobante / Observación"
+                  placeholder="Nro comprobante / Referencia / Observación"
                 />
               </label>
               <div className="modal-foot">
@@ -1739,26 +1833,34 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         <div className="modal-backdrop" onClick={() => setShowRescheduleModal(null)}>
           <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-reschedule" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3 id="modal-title-reschedule">Reprogramar Turno</h3>
+              <div>
+                <h3 id="modal-title-reschedule">Reprogramar Turno</h3>
+                <span className="modal-subtitle">Modificá la fecha y horario asignados a este turno</span>
+              </div>
               <button className="icon-btn" onClick={() => setShowRescheduleModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
-            <p>Cliente: <b>{showRescheduleModal.clientName}</b> ({showRescheduleModal.serviceName})</p>
-            <form onSubmit={handleConfirmReschedule}>
+            <div className="reschedule-context-card">
+              <span className="reschedule-client">{showRescheduleModal.clientName}</span>
+              <span className="reschedule-service">{showRescheduleModal.serviceName} · {showRescheduleModal.professional}</span>
+            </div>
+            <form onSubmit={handleConfirmReschedule} className="modern-form">
               <div className="input-row">
-                <label>
-                  Nueva Fecha:
+                <label className="field-group">
+                  <span className="field-label">Nueva Fecha</span>
                   <input
                     type="date"
                     required
+                    className="field-input"
                     value={rescheduleDate}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                   />
                 </label>
-                <label>
-                  Nuevo Horario:
+                <label className="field-group">
+                  <span className="field-label">Nuevo Horario</span>
                   <input
                     type="time"
                     required
+                    className="field-input"
                     value={rescheduleTime}
                     onChange={(e) => setRescheduleTime(e.target.value)}
                   />
@@ -1780,19 +1882,27 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         <div className="modal-backdrop" onClick={() => setShowCancelModal(null)}>
           <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title-cancel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h3 id="modal-title-cancel">Cancelar Turno</h3>
+              <div>
+                <h3 id="modal-title-cancel">Cancelar Turno</h3>
+                <span className="modal-subtitle">Esta acción registrará la anulación del turno en la agenda</span>
+              </div>
               <button className="icon-btn" onClick={() => setShowCancelModal(null)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
-            <p>¿Estás seguro de cancelar el turno de <b>{showCancelModal.clientName}</b>?</p>
-            <form onSubmit={handleConfirmCancel}>
-              <label>
-                Motivo de cancelación:
+            <div className="cancel-notice-box">
+              <p>¿Estás seguro de cancelar el turno de <strong>{showCancelModal.clientName}</strong> para <em>{showCancelModal.serviceName}</em>?</p>
+            </div>
+            <form onSubmit={handleConfirmCancel} className="modern-form">
+              <label className="field-group">
+                <span className="field-label">Motivo de cancelación</span>
                 <textarea
                   required
                   rows={2}
+                  className="field-textarea"
                   value={cancellationReason}
                   onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Detallar causa de cancelación..."
                 />
+                <small className="field-helper">Quedará asentado en el historial del turno</small>
               </label>
               <div className="modal-foot">
                 <button type="button" className="secondary-button" onClick={() => setShowCancelModal(null)}>Volver</button>
