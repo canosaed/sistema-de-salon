@@ -38,6 +38,8 @@ import {
 import { createClient, updateClient, deleteClient } from '@/app/actions/clients'
 import { createService, updateService, deleteService } from '@/app/actions/services'
 import { createProfessional, updateProfessional, deleteProfessional } from '@/app/actions/professionals'
+import { createMaterialAction, updateMaterialAction, deleteMaterialAction } from '@/app/actions/inventory'
+import { updateSalonSettingsAction } from '@/app/actions/settings'
 
 interface DashboardProps {
   initialData: {
@@ -68,6 +70,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [materials, setMaterials] = useState<any[]>(initialData.materials)
   const [payments, setPayments] = useState<any[]>(initialData.payments)
   const [inventoryMovements, setInventoryMovements] = useState<any[]>(initialData.inventoryMovements)
+  const [settings, setSettings] = useState<any>(initialData.settings)
   const [isOnline, setIsOnline] = useState(true)
 
   // Filtros de Agenda
@@ -87,12 +90,37 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [showRescheduleModal, setShowRescheduleModal] = useState<any>(null)
   const [showCancelModal, setShowCancelModal] = useState<any>(null)
   const [showInventoryModal, setShowInventoryModal] = useState(false)
+  const [showMaterialModal, setShowMaterialModal] = useState<any>(null) // null = cerrado, 'new' = alta, objeto = edición
   const [showServiceModal, setShowServiceModal] = useState<any>(null) // null = cerrado, 'new' = alta, objeto = edición
   const [showProfessionalModal, setShowProfessionalModal] = useState<any>(null) // null = cerrado, 'new' = alta, objeto = edición
 
   // Formularios
   const [isPending, startTransition] = useTransition()
   const [formError, setFormError] = useState('')
+
+  // Formulario ABM Material
+  const [materialForm, setMaterialForm] = useState({
+    id: '',
+    name: '',
+    category: 'Manicuría',
+    unit: 'unidades',
+    currentStock: '10',
+    minimumStock: '3',
+    estimatedCostUnit: '0',
+  })
+
+  // Formulario Configuración
+  const [settingsForm, setSettingsForm] = useState({
+    salonName: initialData.settings?.salonName || 'Atelier Beauty Studio',
+    currency: initialData.settings?.currency || 'ARS',
+    defaultDepositPercentage: initialData.settings?.defaultDepositPercentage || 30,
+    minCancelHoursNotice: initialData.settings?.minCancelHoursNotice || 24,
+    autoConfirmPublicBookings: initialData.settings?.autoConfirmPublicBookings ?? false,
+    allowSimultaneousServices: initialData.settings?.allowSimultaneousServices ?? false,
+    cancellationPolicyText: initialData.settings?.cancellationPolicyText || 'Cancelaciones con al menos 24 hs de anticipación.',
+    businessHoursStart: initialData.settings?.businessHoursStart || '09:00',
+    businessHoursEnd: initialData.settings?.businessHoursEnd || '20:00',
+  })
 
   // Formulario ABM Servicio
   const [serviceForm, setServiceForm] = useState({
@@ -404,6 +432,54 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     })
   }
 
+  // ABM MATERIALES
+  const handleSaveMaterial = (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      try {
+        if (materialForm.id) {
+          const res = await updateMaterialAction(materialForm.id, {
+            name: materialForm.name,
+            category: materialForm.category,
+            unit: materialForm.unit,
+            currentStock: Number(materialForm.currentStock),
+            minimumStock: Number(materialForm.minimumStock),
+            estimatedCostUnit: Number(materialForm.estimatedCostUnit),
+          })
+          if (!res.success) throw new Error(res.error)
+          setMaterials((prev) => prev.map((m) => (m.id === materialForm.id ? res.material : m)))
+        } else {
+          const res = await createMaterialAction({
+            name: materialForm.name,
+            category: materialForm.category,
+            unit: materialForm.unit,
+            currentStock: Number(materialForm.currentStock),
+            minimumStock: Number(materialForm.minimumStock),
+            estimatedCostUnit: Number(materialForm.estimatedCostUnit),
+          })
+          if (!res.success) throw new Error(res.error)
+          setMaterials((prev) => [res.material, ...prev])
+        }
+        setShowMaterialModal(null)
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleDeleteMaterial = (id: string, name: string) => {
+    if (!confirm(`¿Eliminar el material "${name}" del inventario?`)) return
+    startTransition(async () => {
+      try {
+        const res = await deleteMaterialAction(id)
+        if (!res.success) throw new Error(res.error)
+        setMaterials((prev) => prev.filter((m) => m.id !== id))
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
   const handleSaveInventory = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
@@ -417,6 +493,31 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         setMaterials((prev) => prev.map((m) => (m.id === invMaterialId ? res.material : m)))
         setInventoryMovements((prev) => [res.movement, ...prev])
         setShowInventoryModal(false)
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  // GUARDAR CONFIGURACIÓN
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      try {
+        const res = await updateSalonSettingsAction({
+          salonName: settingsForm.salonName,
+          currency: settingsForm.currency,
+          defaultDepositPercentage: Number(settingsForm.defaultDepositPercentage),
+          minCancelHoursNotice: Number(settingsForm.minCancelHoursNotice),
+          autoConfirmPublicBookings: Boolean(settingsForm.autoConfirmPublicBookings),
+          allowSimultaneousServices: Boolean(settingsForm.allowSimultaneousServices),
+          cancellationPolicyText: settingsForm.cancellationPolicyText,
+          businessHoursStart: settingsForm.businessHoursStart,
+          businessHoursEnd: settingsForm.businessHoursEnd,
+        })
+        if (!res.success) throw new Error(res.error)
+        setSettings(res.settings)
+        alert('Configuración guardada exitosamente')
       } catch (err: any) {
         alert(err.message)
       }
@@ -544,7 +645,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               <div className="panel-card">
                 <div className="panel-card-head">
                   <div>
-                    <h3>Turnos para hoy</h3>
+                    <h3>Turnos para hoy ({todayAppointments.length})</h3>
                     <span className="panel-card-subtitle">{todayAppointments.length} turnos programados</span>
                   </div>
                   <button className="text-link" onClick={() => setActiveTab('Agenda')}>Ver agenda completa</button>
@@ -617,8 +718,8 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                         <small className="catalog-item-currency">ARS</small>
                       </div>
                     </div>
-                  ))}
-                </div>
+                ))}
+              </div>
               </div>
             </div>
           </div>
@@ -1095,14 +1196,33 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   <h3>Control de Stock y Materiales</h3>
                   <p>Insumos, consumos estimados y alertas de stock mínimo</p>
                 </div>
-                <button className="primary-button-sm" onClick={() => setShowInventoryModal(true)}>
-                  <Plus size={16} /> Registrar Movimiento
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    className="primary-button-sm"
+                    onClick={() => {
+                      setMaterialForm({
+                        id: '',
+                        name: '',
+                        category: 'Manicuría',
+                        unit: 'unidades',
+                        currentStock: '10',
+                        minimumStock: '3',
+                        estimatedCostUnit: '0',
+                      })
+                      setShowMaterialModal('new')
+                    }}
+                  >
+                    <Plus size={16} /> Nuevo Material
+                  </button>
+                  <button className="secondary-button" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} onClick={() => setShowInventoryModal(true)}>
+                    <Layers size={16} /> Registrar Movimiento
+                  </button>
+                </div>
               </div>
 
               <div className="materials-grid">
                 {materials.map((m) => {
-                  const isLow = Number(m.currentStock) <= Number(m.minStock)
+                  const isLow = Number(m.currentStock) <= Number(m.minStock || m.minimumStock)
                   return (
                     <div key={m.id} className={`material-card ${isLow ? 'low-stock' : ''}`}>
                       <div className="mat-head">
@@ -1223,31 +1343,164 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {activeTab === 'Configuración' && (
           <div className="tab-content">
-            <div className="panel-card">
+            <div className="panel-card config-panel-card">
               <div className="panel-card-head">
                 <div>
                   <h3>Parámetros del Salón</h3>
-                  <p>Políticas de reserva, señas requeridas, anticipación y reglas de atención</p>
+                  <span className="panel-card-subtitle">Políticas de reserva, señas requeridas, anticipación y reglas de atención</span>
                 </div>
               </div>
-              <div className="settings-fields">
-                <label>
-                  Nombre del Establecimiento:
-                  <input defaultValue={initialData.settings?.salonName || 'Atelier Beauty Studio'} />
-                </label>
-                <label>
-                  Zona Horaria:
-                  <input disabled value={initialData.settings?.timeZone || 'America/Argentina/Buenos_Aires'} />
-                </label>
-                <label>
-                  Anticipación mínima para cancelar sin perder la seña:
-                  <input defaultValue="24 horas" />
-                </label>
-                <label>
-                  Porcentaje de seña por defecto:
-                  <input defaultValue="30%" />
-                </label>
-              </div>
+              <form onSubmit={handleSaveSettings} className="settings-form">
+                {/* Sección 1: Datos Generales */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Identidad y Moneda</h4>
+                    <p>Información básica visible para las clientas y facturación</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Nombre del Salón</span>
+                      <input
+                        required
+                        className="field-input"
+                        value={settingsForm.salonName}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, salonName: e.target.value })}
+                        placeholder="Ej. Atelier Beauty Studio"
+                      />
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Moneda Oficial</span>
+                      <input
+                        required
+                        className="field-input"
+                        value={settingsForm.currency}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
+                        placeholder="ARS"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 2: Señas y Cancelaciones */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Políticas de Reserva y Señas</h4>
+                    <p>Condiciones comerciales para asegurar los turnos solicitados</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Porcentaje de Seña por Defecto (%)</span>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        max="100"
+                        className="field-input"
+                        value={settingsForm.defaultDepositPercentage}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, defaultDepositPercentage: Number(e.target.value) })}
+                      />
+                      <small className="field-helper">Porcentaje sugerido al agendar nuevos servicios</small>
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Anticipación mínima para cancelar (horas)</span>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        className="field-input"
+                        value={settingsForm.minCancelHoursNotice}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, minCancelHoursNotice: Number(e.target.value) })}
+                      />
+                      <small className="field-helper">Margen de aviso para no penalizar la seña</small>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 3: Horarios de Atención */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Horarios de Atención</h4>
+                    <p>Franja horaria para asignación de turnos y agenda online</p>
+                  </div>
+                  <div className="settings-grid">
+                    <label className="field-group">
+                      <span className="field-label">Horario de Apertura</span>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={settingsForm.businessHoursStart}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursStart: e.target.value })}
+                      />
+                    </label>
+                    <label className="field-group">
+                      <span className="field-label">Horario de Cierre</span>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={settingsForm.businessHoursEnd}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, businessHoursEnd: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 4: Reglas y Checklist */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Reglas de Agendamiento Online</h4>
+                    <p>Comportamiento automático para el portal público</p>
+                  </div>
+                  <div className="settings-checklist-grid">
+                    <label className="checklist-card">
+                      <input
+                        type="checkbox"
+                        className="custom-checkbox"
+                        checked={settingsForm.autoConfirmPublicBookings}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, autoConfirmPublicBookings: e.target.checked })}
+                      />
+                      <div className="checklist-card-info">
+                        <b>Confirmar automáticamente reservas online</b>
+                        <p>Los turnos tomados desde el portal web quedan confirmados sin requerir visto bueno manual.</p>
+                      </div>
+                    </label>
+                    <label className="checklist-card">
+                      <input
+                        type="checkbox"
+                        className="custom-checkbox"
+                        checked={settingsForm.allowSimultaneousServices}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allowSimultaneousServices: e.target.checked })}
+                      />
+                      <div className="checklist-card-info">
+                        <b>Habilitar servicios simultáneos</b>
+                        <p>Permite agendar turnos superpuestos con diferentes profesionales en el mismo horario.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sección 5: Textos de Políticas */}
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <h4>Texto de Políticas al Cliente</h4>
+                    <p>Mensaje que figurará en el comprobante y portal público de reserva</p>
+                  </div>
+                  <label className="field-group">
+                    <textarea
+                      rows={3}
+                      className="field-textarea"
+                      value={settingsForm.cancellationPolicyText}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, cancellationPolicyText: e.target.value })}
+                      placeholder="Ej. Cancelaciones con al menos 24 hs de anticipación para conservar la seña..."
+                    />
+                  </label>
+                </div>
+
+                <div className="settings-footer">
+                  <button type="submit" className="primary-button-accent" disabled={isPending}>
+                    {isPending ? 'Guardando cambios...' : 'Guardar Parámetros de Configuración'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -1767,7 +2020,88 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* MODAL: INVENTARIO */}
+      {/* MODAL: ABM MATERIAL */}
+      {/* -------------------------------------------------------------------- */}
+      {showMaterialModal && (
+        <div className="modal-backdrop" onClick={() => setShowMaterialModal(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{materialForm.id ? 'Editar Material' : 'Nuevo Material'}</h3>
+              <button className="icon-btn" onClick={() => setShowMaterialModal(null)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveMaterial}>
+              <label>
+                Nombre del Material:
+                <input
+                  required
+                  value={materialForm.name}
+                  onChange={(e) => setMaterialForm({ ...materialForm, name: e.target.value })}
+                  placeholder="Ej. Polímero Acrílico Transparente"
+                />
+              </label>
+              <div className="input-row">
+                <label>
+                  Categoría:
+                  <input
+                    required
+                    value={materialForm.category}
+                    onChange={(e) => setMaterialForm({ ...materialForm, category: e.target.value })}
+                    placeholder="Manicuría / Pestañas / etc."
+                  />
+                </label>
+                <label>
+                  Unidad de Medida:
+                  <input
+                    required
+                    value={materialForm.unit}
+                    onChange={(e) => setMaterialForm({ ...materialForm, unit: e.target.value })}
+                    placeholder="gramos / ml / unidades"
+                  />
+                </label>
+              </div>
+              <div className="input-row">
+                <label>
+                  Stock Actual:
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={materialForm.currentStock}
+                    onChange={(e) => setMaterialForm({ ...materialForm, currentStock: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Stock Mínimo (Alerta):
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={materialForm.minimumStock}
+                    onChange={(e) => setMaterialForm({ ...materialForm, minimumStock: e.target.value })}
+                  />
+                </label>
+              </div>
+              <label>
+                Costo Estimado Unitario (ARS):
+                <input
+                  type="number"
+                  step="0.01"
+                  value={materialForm.estimatedCostUnit}
+                  onChange={(e) => setMaterialForm({ ...materialForm, estimatedCostUnit: e.target.value })}
+                  placeholder="0"
+                />
+              </label>
+              <div className="modal-foot">
+                <button type="button" className="secondary-button" onClick={() => setShowMaterialModal(null)}>Cancelar</button>
+                <button type="submit" className="primary-button" disabled={isPending}>Guardar Material</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL: REGISTRAR MOVIMIENTO INVENTARIO */}
       {/* -------------------------------------------------------------------- */}
       {showInventoryModal && (
         <div className="modal-backdrop" onClick={() => setShowInventoryModal(false)}>
