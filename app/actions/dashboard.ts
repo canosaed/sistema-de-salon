@@ -10,7 +10,7 @@ import { salonRepo } from '@/lib/db/salon-repository'
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings] = await Promise.all([
+  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings, persistedClients] = await Promise.all([
     db.select({ appointment: appointments, client: clients, professional: professionals })
       .from(appointments)
       .innerJoin(clients, eq(appointments.clientId, clients.id))
@@ -28,6 +28,7 @@ export async function getDashboardData() {
     db.select().from(inventoryMovements),
     db.select().from(professionalSchedules).where(eq(professionalSchedules.isActive, true)),
     db.select().from(salonSettings).limit(1),
+    db.select().from(clients).where(eq(clients.userId, session.user.id)),
   ])
   const dashboardPayments = persistedPayments.map(({ payment, client }) => ({
     id: payment.id,
@@ -71,7 +72,7 @@ export async function getDashboardData() {
     techniques: salonRepo.getTechniques(),
     materials: persistedMaterials.length ? persistedMaterials : salonRepo.getMaterials(),
     professionals: persistedProfessionals.length ? persistedProfessionals : salonRepo.getProfessionals(),
-    clients: salonRepo.getClients(),
+    clients: persistedClients.length ? persistedClients : salonRepo.getClients(),
     appointments: dashboardAppointments,
     payments: dashboardPayments.length ? dashboardPayments : salonRepo.getPayments(),
     inventoryMovements: persistedMovements.length ? persistedMovements : salonRepo.getInventoryMovements(),
