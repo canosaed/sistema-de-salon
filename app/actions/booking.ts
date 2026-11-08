@@ -1,6 +1,16 @@
 'use server'
 
+import { and, asc, eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { clients, user } from '@/lib/db/schema'
+import { publicAppointments } from '@/lib/db/public-appointments'
 import { salonRepo } from '@/lib/db/salon-repository'
+
+async function getSalonOwnerId() {
+  const owners = await db.select({ id: user.id }).from(user).orderBy(asc(user.createdAt)).limit(1)
+  if (!owners[0]) throw new Error('El salón todavía no tiene una cuenta administradora configurada.')
+  return owners[0].id
+}
 
 export async function getPublicBookingCatalog() {
   const categories = salonRepo.getCategories()
@@ -9,22 +19,34 @@ export async function getPublicBookingCatalog() {
   const professionals = salonRepo.getProfessionals()
   const settings = salonRepo.getSettings()
 
-  return {
-    categories,
-    services,
-    techniques,
-    professionals,
-    settings,
-  }
+  return { categories, services, techniques, professionals, settings }
 }
 
 export async function checkPublicAvailability(params: {
   serviceId: string
   techniqueId?: string
   professionalId?: string
-  dateStr: string // "YYYY-MM-DD"
+  dateStr: string
 }) {
-  return salonRepo.getAvailableSlots(params)
+  const availability = salonRepo.getAvailableSlots(params)
+  const professionals = salonRepo.getProfessionals()
+  const selectedProfessional = professionals.find((pro) => pro.id === params.professionalId)
+  const booked = await db.select({ time: publicAppointments.appointmentTime, professional: publicAppointments.professional })
+    .from(publicAppointments)
+    .where(and(eq(publicAppointments.appointmentDate, params.dateStr), eq(publicAppointments.status, 'Pendiente')))
+
+  const bookedTimes = new Set(booked.map((appointment) => `${appointment.time}|${appointment.professional}`))
+  const slots = availability.slots.filter((slot) => {
+    const availableProfessionalIds = params.professionalId && params.professionalId !== 'any'
+      ? [params.professionalId]
+      : slot.availableProfessionalIds
+    return availableProfessionalIds.some((professionalId) => {
+      const professional = professionals.find((pro) => pro.id === professionalId)
+      return professional && !bookedTimes.has(`${slot.time}|${professional.name}`)
+    })
+  })
+
+  return { ...availability, slots }
 }
 
 export async function createPublicBooking(data: {
@@ -39,69 +61,55 @@ export async function createPublicBooking(data: {
   notes?: string
 }) {
   const service = salonRepo.getServices().find((s) => s.id === data.serviceId)
-  if (!service) throw new Error('Servicio no encontrado o no habilitado')
-  if (!service.allowPublicBooking) throw new Error('El servicio seleccionado no está disponible para reserva online')
+  if (!service || !service.allowPublicBooking) throw new Error('Servicio no encontrado o no habilitado')
 
-  // Validaciones del cliente
   const name = data.clientName?.trim()
   const phone = data.clientPhone?.trim()
-  if (!name || !phone) {
-    throw new Error('Por favor complete su nombre y teléfono de contacto.')
-  }
+  if (!name || !phone) throw new Error('Por favor complete su nombre y teléfono de contacto.')
+  if (!data.date || data.date < new Date().toISOString().split('T')[0]) throw new Error('No es posible agendar turnos en fechas pasadas.')
+  if (!data.time || !/^\d{2}:\d{2}$/.test(data.time)) throw new Error('Debe seleccionar un horario válido.')
+  if (phone.replace(/\D/g, '').length < 6) throw new Error('Por favor ingrese un número de teléfono válido.')
+  if (data.clientEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.clientEmail.trim())) throw new Error('El correo electrónico ingresado no tiene un formato válido.')
 
-  // Validación de fecha no pasada
-  const todayStr = new Date().toISOString().split('T')[0]
-  if (!data.date || data.date < todayStr) {
-    throw new Error('No es posible agendar turnos en fechas pasadas ni fuera del calendario.')
-  }
-
-  if (!data.time || !/^\d{2}:\d{2}$/.test(data.time)) {
-    throw new Error('Debe seleccionar un horario válido.')
-  }
-
-  // Validación de teléfono (mínimo 6 dígitos)
-  const phoneDigits = phone.replace(/\D/g, '')
-  if (phoneDigits.length < 6) {
-    throw new Error('Por favor ingrese un número de teléfono válido.')
-  }
-
-  // Validación de email si fue provisto
-  if (data.clientEmail && data.clientEmail.trim()) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(data.clientEmail.trim())) {
-      throw new Error('El correo electrónico ingresado no tiene un formato válido.')
-    }
-  }
-
-  // Verificar anticipación mínima si es para hoy
   const settings = salonRepo.getSettings()
   const minNoticeHours = settings.minNoticeHoursForBooking || 2
-  const now = new Date()
-  const [hours, minutes] = data.time.split(':').map(Number)
-  const bookingDateTime = new Date(`${data.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`)
-  const diffHours = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-
-  if (diffHours < minNoticeHours && data.date === todayStr) {
+  const bookingDateTime = new Date(`${data.date}T${data.time}:00`)
+  if (data.date === new Date().toISOString().split('T')[0] && (bookingDateTime.getTime() - Date.now()) / 3600000 < minNoticeHours) {
     throw new Error(`Los turnos online requieren al menos ${minNoticeHours} horas de anticipación.`)
   }
 
-  // Prevenir dobles reservas con control transaccional
-  const appointment = salonRepo.createAppointment({
-    clientName: name,
-    clientPhone: phone,
-    clientEmail: data.clientEmail?.trim() || undefined,
-    serviceIds: [data.serviceId],
-    techniqueIds: data.techniqueId ? [data.techniqueId] : [],
-    professionalId: data.professionalId,
-    date: data.date,
-    time: data.time,
-    notes: data.notes?.trim() || undefined,
-    isPublicBooking: true,
-  })
+  const professionals = salonRepo.getProfessionals()
+  const assignedProfessional = data.professionalId && data.professionalId !== 'any'
+    ? professionals.find((professional) => professional.id === data.professionalId)
+    : professionals.find((professional) => salonRepo.getAvailableSlots({ serviceId: data.serviceId, techniqueId: data.techniqueId, professionalId: professional.id, dateStr: data.date }).slots.some((slot) => slot.time === data.time))
+  if (!assignedProfessional) throw new Error('No hay profesionales disponibles para ese horario.')
 
-  return {
-    success: true,
-    appointment,
-    message: '¡Tu reserva ha sido registrada con éxito!',
+  const conflicting = await db.select({ id: publicAppointments.id }).from(publicAppointments).where(and(
+    eq(publicAppointments.appointmentDate, data.date),
+    eq(publicAppointments.appointmentTime, data.time),
+    eq(publicAppointments.professional, assignedProfessional.name),
+    eq(publicAppointments.status, 'Pendiente'),
+  )).limit(1)
+  if (conflicting.length) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
+
+  const ownerId = await getSalonOwnerId()
+  const existingClient = await db.select({ id: clients.id }).from(clients).where(eq(clients.phone, phone)).limit(1)
+  const clientId = existingClient[0]?.id || crypto.randomUUID()
+  if (!existingClient[0]) {
+    await db.insert(clients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0, isActive: true })
   }
+
+  const appointment = {
+    id: crypto.randomUUID(),
+    userId: ownerId,
+    client: name,
+    service: service.name,
+    appointmentDate: data.date,
+    appointmentTime: data.time,
+    professional: assignedProfessional.name,
+    status: 'Pendiente',
+  }
+  await db.insert(publicAppointments).values(appointment)
+
+  return { success: true, appointment, message: '¡Tu reserva ha sido registrada con éxito!' }
 }
