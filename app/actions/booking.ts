@@ -80,10 +80,19 @@ export async function createPublicBooking(data: {
   }
 
   const professionals = salonRepo.getProfessionals()
+  const availability = salonRepo.getAvailableSlots({
+    serviceId: data.serviceId,
+    techniqueId: data.techniqueId,
+    professionalId: data.professionalId,
+    dateStr: data.date,
+  })
   const assignedProfessional = data.professionalId && data.professionalId !== 'any'
     ? professionals.find((professional) => professional.id === data.professionalId)
-    : professionals.find((professional) => salonRepo.getAvailableSlots({ serviceId: data.serviceId, techniqueId: data.techniqueId, professionalId: professional.id, dateStr: data.date }).slots.some((slot) => slot.time === data.time))
+    : professionals.find((professional) => availability.slots.some((slot) => slot.time === data.time && slot.availableProfessionalIds.includes(professional.id)))
   if (!assignedProfessional) throw new Error('No hay profesionales disponibles para ese horario.')
+  if (!availability.slots.some((slot) => slot.time === data.time && slot.availableProfessionalIds.includes(assignedProfessional.id))) {
+    throw new Error('Ese horario ya no está disponible. Elegí otro horario.')
+  }
 
   const conflicting = await db.select({ id: publicAppointments.id }).from(publicAppointments).where(and(
     eq(publicAppointments.appointmentDate, data.date),
@@ -112,5 +121,26 @@ export async function createPublicBooking(data: {
   }
   await db.insert(publicAppointments).values(appointment)
 
-  return { success: true, appointment, message: '¡Tu reserva ha sido registrada con éxito!' }
+  const totalDurationMinutes = availability.totalDurationMinutes || service.durationMinutes
+  const totalPrice = Number(availability.totalPrice ?? service.price ?? 0)
+  const requiredDeposit = Number(availability.depositAmount ?? (service.depositType === 'fixed'
+    ? service.depositValue
+    : Math.round((totalPrice * Number(service.depositValue ?? 30)) / 100)))
+
+  return {
+    success: true,
+    appointment: {
+      ...appointment,
+      date: data.date,
+      time: data.time,
+      clientName: name,
+      serviceName: service.name,
+      professional: assignedProfessional.name,
+      totalDurationMinutes,
+      totalPrice,
+      requiredDeposit,
+      status: 'pending_confirmation',
+    },
+    message: '¡Tu reserva ha sido registrada con éxito!',
+  }
 }
