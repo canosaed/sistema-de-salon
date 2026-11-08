@@ -1,6 +1,6 @@
 'use server'
 
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { appointments, clients, professionals as professionalTable, salonSettings, serviceCategories, services as serviceTable, techniques as techniqueTable, user } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
@@ -35,11 +35,14 @@ export async function checkPublicAvailability(params: {
   dateStr: string
 }) {
   const availability = salonRepo.getAvailableSlots(params)
-  const professionals = salonRepo.getProfessionals()
+  const professionalRows = await db.select().from(professionalTable).where(eq(professionalTable.isActive, true))
+  const professionals = professionalRows.length
+    ? professionalRows.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] }))
+    : salonRepo.getProfessionals()
   const selectedProfessional = professionals.find((pro) => pro.id === params.professionalId)
   const booked = await db.select({ startDateTime: appointments.startDateTime, professionalId: appointments.professionalId })
     .from(appointments)
-    .where(eq(appointments.status, 'pending_confirmation'))
+    .where(sql`${appointments.status} IN ('pending_confirmation', 'confirmed', 'in_progress')`)
   const bookedTimes = new Set(booked
     .filter((appointment) => appointment.startDateTime?.toISOString().startsWith(params.dateStr))
     .map((appointment) => `${appointment.startDateTime?.toISOString().slice(11, 16)}|${appointment.professionalId}`))
