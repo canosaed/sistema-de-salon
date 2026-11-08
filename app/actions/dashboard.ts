@@ -4,13 +4,13 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { appointmentHistory, appointments, clients, payments, professionals, serviceCategories } from '@/lib/db/schema'
+import { appointmentHistory, appointments, clients, inventoryMovements, materials, payments, professionalSchedules, professionals, salonSettings, serviceCategories, services } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [persistedAppointments, persistedCategories, persistedPayments] = await Promise.all([
+  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings] = await Promise.all([
     db.select({ appointment: appointments, client: clients, professional: professionals })
       .from(appointments)
       .innerJoin(clients, eq(appointments.clientId, clients.id))
@@ -22,6 +22,12 @@ export async function getDashboardData() {
       .innerJoin(appointments, eq(payments.appointmentId, appointments.id))
       .innerJoin(clients, eq(appointments.clientId, clients.id))
       .where(eq(clients.userId, session.user.id)),
+    db.select().from(services).where(eq(services.isActive, true)),
+    db.select().from(professionals).where(eq(professionals.isActive, true)),
+    db.select().from(materials).where(eq(materials.isActive, true)),
+    db.select().from(inventoryMovements),
+    db.select().from(professionalSchedules).where(eq(professionalSchedules.isActive, true)),
+    db.select().from(salonSettings).limit(1),
   ])
   const dashboardPayments = persistedPayments.map(({ payment, client }) => ({
     id: payment.id,
@@ -61,16 +67,16 @@ export async function getDashboardData() {
 
   return {
     categories: persistedCategories.length ? persistedCategories : salonRepo.getCategories(),
-    services: salonRepo.getServices(),
+    services: persistedServices.length ? persistedServices : salonRepo.getServices(),
     techniques: salonRepo.getTechniques(),
-    materials: salonRepo.getMaterials(),
-    professionals: salonRepo.getProfessionals(),
+    materials: persistedMaterials.length ? persistedMaterials : salonRepo.getMaterials(),
+    professionals: persistedProfessionals.length ? persistedProfessionals : salonRepo.getProfessionals(),
     clients: salonRepo.getClients(),
     appointments: dashboardAppointments,
     payments: dashboardPayments.length ? dashboardPayments : salonRepo.getPayments(),
-    inventoryMovements: salonRepo.getInventoryMovements(),
-    settings: salonRepo.getSettings(),
-    schedules: salonRepo.getAllSchedules(),
+    inventoryMovements: persistedMovements.length ? persistedMovements : salonRepo.getInventoryMovements(),
+    settings: persistedSettings[0] || salonRepo.getSettings(),
+    schedules: persistedSchedules.length ? persistedSchedules : salonRepo.getAllSchedules(),
   }
 }
 
