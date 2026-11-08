@@ -63,8 +63,8 @@ export async function registerStockMovementAction(input: StockMovementInput) {
     const delta = input.type === 'in' ? input.quantity : input.type === 'adjustment' ? input.quantity - current : -input.quantity
     if (current + delta < 0) return { success: false, error: 'El stock no puede quedar negativo' }
     const [movement] = await db.insert(inventoryMovements).values({ id: crypto.randomUUID(), materialId: input.materialId, type: input.type, quantity: String(input.quantity), reason: input.reason.trim(), appointmentId: input.appointmentId || null }).returning()
-    await db.update(materials).set({ currentStock: String(current + delta), updatedAt: new Date() }).where(eq(materials.id, input.materialId))
+    const [updatedMaterial] = await db.update(materials).set({ currentStock: String(current + delta), updatedAt: new Date() }).where(eq(materials.id, input.materialId)).returning()
     revalidatePath('/')
-    return { success: true, movement, currentStock: current + delta }
+    return { success: true, movement, material: updatedMaterial, currentStock: current + delta }
   } catch (error: any) { return { success: false, error: error.message || 'Error al registrar movimiento de stock' } }
 }

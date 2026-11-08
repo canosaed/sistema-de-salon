@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { appointmentHistory, appointments, clients, inventoryMovements, materials, payments, professionalSchedules, professionals, salonSettings, serviceCategories, services, techniques } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
+import { registerStockMovementAction } from '@/app/actions/inventory'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -140,11 +141,25 @@ export async function rescheduleAppointmentAction(
   newDate: string,
   newTime: string
 ) {
-  return salonRepo.rescheduleAppointment(appointmentId, newDate, newTime)
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  const [existing] = await db.select().from(appointments).where(eq(appointments.id, appointmentId)).limit(1)
+  if (!existing?.startDateTime || !existing.endDateTime) return salonRepo.rescheduleAppointment(appointmentId, newDate, newTime)
+  const duration = existing.endDateTime.getTime() - existing.startDateTime.getTime()
+  const startDateTime = new Date(`${newDate}T${newTime}:00`)
+  const endDateTime = new Date(startDateTime.getTime() + duration)
+  const [updated] = await db.update(appointments).set({ startDateTime, endDateTime, updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
+  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: 'rescheduled', actorUserId: session.user.id, details: `${newDate} ${newTime}`, snapshot: updated })
+  return updated
 }
 
 export async function deleteAppointmentAction(appointmentId: string) {
-  return salonRepo.deleteAppointment(appointmentId)
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  const [updated] = await db.update(appointments).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
+  if (!updated) return salonRepo.deleteAppointment(appointmentId)
+  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: 'cancelled', actorUserId: session.user.id, snapshot: updated })
+  return updated
 }
 
 export async function registerAppointmentPaymentAction(input: {
@@ -169,5 +184,7 @@ export async function recordMaterialConsumptionAction(input: {
   reason: string
   appointmentId?: string
 }) {
-  return salonRepo.registerMaterialMovement(input)
+  const result = await registerStockMovementAction(input)
+  if (!result.success) throw new Error(result.error)
+  return result
 }
