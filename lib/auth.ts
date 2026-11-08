@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth"
 import { Pool } from "pg"
 
-const baseURL = process.env.BETTER_AUTH_URL
-  ? process.env.BETTER_AUTH_URL
+const configuredBaseURL = process.env.BETTER_AUTH_URL
+const baseURL = configuredBaseURL && !configuredBaseURL.includes("localhost")
+  ? configuredBaseURL
   : process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_URL
@@ -11,6 +12,7 @@ const baseURL = process.env.BETTER_AUTH_URL
 
 const trustedOrigins = [
   "http://localhost:3000",
+  "https://sistema-de-gestion-de-salones.v0.build",
   ...[
     process.env.V0_RUNTIME_URL,
     process.env.V0_DEV_APP_URL,
