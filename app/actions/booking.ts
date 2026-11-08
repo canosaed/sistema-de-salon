@@ -22,7 +22,7 @@ export async function getPublicBookingCatalog() {
   const categories = categoryRows.length ? categoryRows : salonRepo.getCategories()
   const services = serviceRows.length ? serviceRows.map((service) => ({ ...service, price: Number(service.price), depositValue: Number(service.depositValue) })) : salonRepo.getServices().filter((s) => s.allowPublicBooking)
   const techniques = techniqueRows.length ? techniqueRows.map((technique) => ({ ...technique, additionalPrice: Number(technique.additionalPrice) })) : salonRepo.getTechniques()
-  const professionals = professionalRows.length ? professionalRows.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
+  const professionals = professionalRows.length ? professionalRows.map((professional) => ({ ...professional, specialties: Array.isArray(professional.specialties) ? professional.specialties : professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
   const settings = settingRows[0] || salonRepo.getSettings()
 
   return { categories, services, techniques, professionals, settings }
@@ -37,7 +37,7 @@ export async function checkPublicAvailability(params: {
   const availability = salonRepo.getAvailableSlots(params)
   const professionalRows = await db.select().from(professionalTable).where(eq(professionalTable.isActive, true))
   const professionals = professionalRows.length
-    ? professionalRows.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] }))
+    ? professionalRows.map((professional) => ({ ...professional, specialties: Array.isArray(professional.specialties) ? professional.specialties : professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] }))
     : salonRepo.getProfessionals()
   const selectedProfessional = professionals.find((pro) => pro.id === params.professionalId)
   const booked = await db.select({ startDateTime: appointments.startDateTime, professionalId: appointments.professionalId })
@@ -91,7 +91,7 @@ export async function createPublicBooking(data: {
   }
 
   const persistedProfessionals = await db.select().from(professionalTable).where(eq(professionalTable.isActive, true))
-  const professionals = persistedProfessionals.length ? persistedProfessionals.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
+  const professionals = persistedProfessionals.length ? persistedProfessionals.map((professional) => ({ ...professional, specialties: Array.isArray(professional.specialties) ? professional.specialties : professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
   const availability = salonRepo.getAvailableSlots({
     serviceId: data.serviceId,
     techniqueId: data.techniqueId,
