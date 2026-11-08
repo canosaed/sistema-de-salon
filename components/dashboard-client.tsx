@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createAppointment } from '@/app/actions/appointments'
 import { createClient, deleteClient, updateClient } from '@/app/actions/clients'
 import {
   CalendarDays,
@@ -46,6 +47,8 @@ function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Cal
 export default function DashboardClient({ initialClients }: { initialClients: Array<{ id: string; name: string; phone: string; visits: number }> }) {
   const [active, setActive] = useState('Resumen')
   const [showNew, setShowNew] = useState(false)
+  const [appointmentForm, setAppointmentForm] = useState({ client: '', service: '', date: '2026-11-08', time: '10:30', professional: '' })
+  const [appointmentError, setAppointmentError] = useState('')
   const [query, setQuery] = useState('')
   const [clients, setClients] = useState(initialClients)
   const [showNewClient, setShowNewClient] = useState(false)
@@ -53,6 +56,27 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
   const [clientForm, setClientForm] = useState({ name: '', phone: '' })
   const [clientError, setClientError] = useState('')
   const filteredServices = useMemo(() => services.filter((service) => service.name.toLowerCase().includes(query.toLowerCase())), [query])
+  async function saveAppointment() {
+    if (!appointmentForm.client || !appointmentForm.service || !appointmentForm.professional) {
+      setAppointmentError('Completá cliente, servicio y profesional para guardar el turno.')
+      return
+    }
+    try {
+      await createAppointment({
+        client: appointmentForm.client,
+        service: appointmentForm.service,
+        appointmentDate: appointmentForm.date,
+        appointmentTime: appointmentForm.time,
+        professional: appointmentForm.professional,
+      })
+      setAppointmentError('')
+      setAppointmentForm({ client: '', service: '', date: '2026-11-08', time: '10:30', professional: '' })
+      setShowNew(false)
+    } catch (error) {
+      setAppointmentError(error instanceof Error ? error.message : 'No pudimos guardar el turno.')
+    }
+  }
+
   async function removeClient(clientId: string, clientName: string) {
     if (!window.confirm(`¿Eliminar a ${clientName}?`)) return
     try {
@@ -125,6 +149,6 @@ export default function DashboardClient({ initialClients }: { initialClients: Ar
       </div>
     </section>
     {showNewClient && <div className="modal-backdrop" onClick={() => setShowNewClient(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Clientes</p><h2 id="new-client-title">{editingClientId ? 'Editar cliente' : 'Nuevo cliente'}</h2></div><button className="icon-button" onClick={() => setShowNewClient(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Nombre completo<input value={clientForm.name} onChange={(event) => { setClientForm((current) => ({ ...current, name: event.target.value })); setClientError('') }} placeholder="Ej. Ana García" autoFocus /></label><label>Teléfono<input value={clientForm.phone} onChange={(event) => { setClientForm((current) => ({ ...current, phone: event.target.value })); setClientError('') }} placeholder="11 5555 0000" /></label>{clientError && <p className="form-error" role="alert">{clientError}</p>}<div className="modal-foot"><button className="secondary-button" onClick={() => setShowNewClient(false)}>Cancelar</button><button className="primary-button" onClick={saveClient}>Guardar cliente</button></div></div></div>}
-    {showNew && <div className="modal-backdrop" onClick={() => setShowNew(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Agenda</p><h2 id="new-title">Nuevo turno</h2></div><button className="icon-button" onClick={() => setShowNew(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Cliente<select defaultValue=""><option value="" disabled>Seleccionar cliente</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name} · {client.phone}</option>)}</select></label><label>Servicio<select defaultValue=""><option value="" disabled>Elegir servicio</option><option>Esmaltado semipermanente · $18.500</option><option>Soft gel · $27.000</option><option>Lifting de pestañas · $22.000</option></select></label><div className="form-row"><label>Fecha<input type="date" defaultValue="2024-08-14" /></label><label>Hora<select defaultValue="10:30"><option>09:00</option><option>10:30</option><option>12:00</option><option>15:30</option></select></label></div><label>Profesional<select defaultValue=""><option value="" disabled>Asignar profesional</option><option>Valentina R.</option><option>Lucía M.</option><option>Agustina P.</option></select></label><div className="modal-foot"><button className="secondary-button" onClick={() => setShowNew(false)}>Cancelar</button><button className="primary-button" onClick={() => setShowNew(false)}>Guardar turno</button></div></div></div>}
+    {showNew && <div className="modal-backdrop" onClick={() => setShowNew(false)}><div className="new-appointment" role="dialog" aria-modal="true" aria-labelledby="new-title" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><p className="section-kicker">Agenda</p><h2 id="new-title">Nuevo turno</h2></div><button className="icon-button" onClick={() => setShowNew(false)} aria-label="Cerrar"><X size={19} /></button></div><label>Cliente<select value={appointmentForm.client} onChange={(event) => { setAppointmentForm((current) => ({ ...current, client: event.target.value })); setAppointmentError('') }}><option value="" disabled>Seleccionar cliente</option>{clients.map((client) => <option key={client.id} value={client.name}>{client.name} · {client.phone}</option>)}</select></label><label>Servicio<select value={appointmentForm.service} onChange={(event) => { setAppointmentForm((current) => ({ ...current, service: event.target.value })); setAppointmentError('') }}><option value="" disabled>Elegir servicio</option><option>Esmaltado semipermanente</option><option>Soft gel</option><option>Lifting de pestañas</option></select></label><div className="form-row"><label>Fecha<input type="date" value={appointmentForm.date} onChange={(event) => setAppointmentForm((current) => ({ ...current, date: event.target.value }))} /></label><label>Hora<select value={appointmentForm.time} onChange={(event) => setAppointmentForm((current) => ({ ...current, time: event.target.value }))}><option>09:00</option><option>10:30</option><option>12:00</option><option>15:30</option></select></label></div><label>Profesional<select value={appointmentForm.professional} onChange={(event) => { setAppointmentForm((current) => ({ ...current, professional: event.target.value })); setAppointmentError('') }}><option value="" disabled>Asignar profesional</option><option>Valentina R.</option><option>Lucía M.</option><option>Agustina P.</option></select></label>{appointmentError && <p className="form-error" role="alert">{appointmentError}</p>}<div className="modal-foot"><button className="secondary-button" onClick={() => setShowNew(false)}>Cancelar</button><button className="primary-button" onClick={saveAppointment}>Guardar turno</button></div></div></div>}
   </main>
 }
