@@ -39,26 +39,37 @@ export async function createPublicBooking(data: {
   notes?: string
 }) {
   const service = salonRepo.getServices().find((s) => s.id === data.serviceId)
-  if (!service) throw new Error('Servicio no encontrado')
+  if (!service) throw new Error('Servicio no encontrado o no habilitado')
+  if (!service.allowPublicBooking) throw new Error('El servicio seleccionado no está disponible para reserva online')
 
   // Validaciones del cliente
-  const name = data.clientName.trim()
-  const phone = data.clientPhone.trim()
+  const name = data.clientName?.trim()
+  const phone = data.clientPhone?.trim()
   if (!name || !phone) {
     throw new Error('Por favor complete su nombre y teléfono de contacto.')
+  }
+
+  // Validación de fecha no pasada
+  const todayStr = new Date().toISOString().split('T')[0]
+  if (!data.date || data.date < todayStr) {
+    throw new Error('No es posible agendar turnos en fechas pasadas.')
+  }
+
+  if (!data.time) {
+    throw new Error('Debe seleccionar un horario válido.')
   }
 
   // Prevenir dobles reservas con control transaccional
   const appointment = salonRepo.createAppointment({
     clientName: name,
     clientPhone: phone,
-    clientEmail: data.clientEmail,
+    clientEmail: data.clientEmail?.trim() || undefined,
     serviceIds: [data.serviceId],
     techniqueIds: data.techniqueId ? [data.techniqueId] : [],
     professionalId: data.professionalId,
     date: data.date,
     time: data.time,
-    notes: data.notes,
+    notes: data.notes?.trim() || undefined,
     isPublicBooking: true,
   })
 

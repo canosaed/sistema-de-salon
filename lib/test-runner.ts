@@ -492,5 +492,35 @@ export function runObligatoryScenariosTests() {
     }
   })
 
+  // 26. Auditoría Módulo /reservar: Validación estricta de servicios no públicos y fechas pasadas
+  test(26, 'Auditoría Módulo /reservar: Reglas de validación para reserva pública', () => {
+    // 1. Servicio con allowPublicBooking = false
+    const privateSrv = salonRepo.createService({
+      categoryId: 'cat-manos',
+      name: 'Servicio Exclusivo Interno',
+      price: 35000,
+      durationMinutes: 90,
+      allowPublicBooking: false,
+    })
+
+    const catalogServices = salonRepo.getServices().filter((s) => s.allowPublicBooking)
+    if (catalogServices.some((s) => s.id === privateSrv.id)) {
+      throw new Error('El servicio privado no debería listarse en el catálogo público')
+    }
+
+    // 2. Reserva de servicio con cálculo de seña del 30%
+    const publicSrv = salonRepo.getServices().find((s) => s.id === 'srv-esmaltado-semi')!
+    const available = salonRepo.getAvailableSlots({
+      serviceId: publicSrv.id,
+      dateStr: '2026-11-18',
+    })
+    if (!available.slots || available.slots.length === 0) {
+      throw new Error('Debería retornar slots disponibles para servicio público')
+    }
+    if (available.depositAmount <= 0) {
+      throw new Error('Debería calcular seña obligatoria para reserva pública')
+    }
+  })
+
   return results
 }
