@@ -55,6 +55,13 @@ CREATE TABLE IF NOT EXISTS payment (id text PRIMARY KEY, "appointmentId" text NO
 CREATE TABLE IF NOT EXISTS inventory_movement (id text PRIMARY KEY, "materialId" text NOT NULL, type text NOT NULL, quantity numeric(10,2) NOT NULL, reason text NOT NULL, "appointmentId" text, "createdAt" timestamp NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS salon_setting (id text PRIMARY KEY, "salonName" text NOT NULL DEFAULT 'Atelier Beauty Studio', "timeZone" text NOT NULL DEFAULT 'America/Argentina/Buenos_Aires', currency text NOT NULL DEFAULT 'ARS', "minNoticeHoursForBooking" integer NOT NULL DEFAULT 2, "minNoticeHoursForCancellation" integer NOT NULL DEFAULT 24, "autoConfirmPublicBookings" boolean NOT NULL DEFAULT false, "defaultDepositType" text NOT NULL DEFAULT 'percentage', "defaultDepositPercentage" integer NOT NULL DEFAULT 30, "defaultDepositFixed" numeric(12,2) NOT NULL DEFAULT 5000, "updatedAt" timestamp NOT NULL DEFAULT now());
 
+ALTER TABLE service_category ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE service_category ADD COLUMN IF NOT EXISTS "order" integer NOT NULL DEFAULT 0;
+ALTER TABLE service ADD COLUMN IF NOT EXISTS "prepMinutes" integer NOT NULL DEFAULT 0;
+ALTER TABLE service ADD COLUMN IF NOT EXISTS "cleanupMinutes" integer NOT NULL DEFAULT 0;
+ALTER TABLE service ADD COLUMN IF NOT EXISTS "cancellationPolicy" text;
+ALTER TABLE professional ADD COLUMN IF NOT EXISTS initials text;
+
 -- Completa la tabla client existente sin eliminar ni sobrescribir registros.
 ALTER TABLE client ADD COLUMN IF NOT EXISTS "birthDate" date;
 ALTER TABLE client ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
