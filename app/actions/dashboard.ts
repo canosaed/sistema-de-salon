@@ -4,13 +4,13 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { appointmentHistory, appointments, clients, inventoryMovements, materials, payments, professionalSchedules, professionals, salonSettings, serviceCategories, services } from '@/lib/db/schema'
+import { appointmentHistory, appointments, clients, inventoryMovements, materials, payments, professionalSchedules, professionals, salonSettings, serviceCategories, services, techniques } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings, persistedClients] = await Promise.all([
+  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings, persistedClients, persistedTechniques] = await Promise.all([
     db.select({ appointment: appointments, client: clients, professional: professionals })
       .from(appointments)
       .innerJoin(clients, eq(appointments.clientId, clients.id))
@@ -23,6 +23,7 @@ export async function getDashboardData() {
       .innerJoin(clients, eq(appointments.clientId, clients.id))
       .where(eq(clients.userId, session.user.id)),
     db.select().from(services).where(eq(services.isActive, true)),
+    db.select().from(techniques).where(eq(techniques.isActive, true)),
     db.select().from(professionals).where(eq(professionals.isActive, true)),
     db.select().from(materials).where(eq(materials.isActive, true)),
     db.select().from(inventoryMovements),
@@ -69,7 +70,7 @@ export async function getDashboardData() {
   return {
     categories: persistedCategories.length ? persistedCategories : salonRepo.getCategories(),
     services: persistedServices.length ? persistedServices : salonRepo.getServices(),
-    techniques: salonRepo.getTechniques(),
+    techniques: persistedTechniques.length ? persistedTechniques : salonRepo.getTechniques(),
     materials: persistedMaterials.length ? persistedMaterials : salonRepo.getMaterials(),
     professionals: persistedProfessionals.length ? persistedProfessionals : salonRepo.getProfessionals(),
     clients: persistedClients.length ? persistedClients : salonRepo.getClients(),
