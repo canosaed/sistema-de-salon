@@ -2,7 +2,7 @@
 
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { appointments, clients, professionals as professionalTable, serviceCategories, services as serviceTable, techniques as techniqueTable, user } from '@/lib/db/schema'
+import { appointments, clients, professionals as professionalTable, salonSettings, serviceCategories, services as serviceTable, techniques as techniqueTable, user } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 async function getSalonOwnerId() {
@@ -12,17 +12,18 @@ async function getSalonOwnerId() {
 }
 
 export async function getPublicBookingCatalog() {
-  const [categoryRows, serviceRows, techniqueRows, professionalRows] = await Promise.all([
+  const [categoryRows, serviceRows, techniqueRows, professionalRows, settingRows] = await Promise.all([
     db.select().from(serviceCategories).orderBy(asc(serviceCategories.order)),
     db.select().from(serviceTable).where(eq(serviceTable.allowPublicBooking, true)),
     db.select().from(techniqueTable).where(eq(techniqueTable.isActive, true)),
     db.select().from(professionalTable).where(eq(professionalTable.isActive, true)),
+    db.select().from(salonSettings).limit(1),
   ])
   const categories = categoryRows.length ? categoryRows : salonRepo.getCategories()
   const services = serviceRows.length ? serviceRows.map((service) => ({ ...service, price: Number(service.price), depositValue: Number(service.depositValue) })) : salonRepo.getServices().filter((s) => s.allowPublicBooking)
   const techniques = techniqueRows.length ? techniqueRows.map((technique) => ({ ...technique, additionalPrice: Number(technique.additionalPrice) })) : salonRepo.getTechniques()
   const professionals = professionalRows.length ? professionalRows.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
-  const settings = salonRepo.getSettings()
+  const settings = settingRows[0] || salonRepo.getSettings()
 
   return { categories, services, techniques, professionals, settings }
 }
@@ -66,7 +67,8 @@ export async function createPublicBooking(data: {
   clientEmail?: string
   notes?: string
 }) {
-  const service = salonRepo.getServices().find((s) => s.id === data.serviceId)
+  const [persistedService] = await db.select().from(serviceTable).where(eq(serviceTable.id, data.serviceId)).limit(1)
+  const service = persistedService || salonRepo.getServices().find((s) => s.id === data.serviceId)
   if (!service || !service.allowPublicBooking) throw new Error('Servicio no encontrado o no habilitado')
 
   const name = data.clientName?.trim()
@@ -77,14 +79,16 @@ export async function createPublicBooking(data: {
   if (phone.replace(/\D/g, '').length < 6) throw new Error('Por favor ingrese un número de teléfono válido.')
   if (data.clientEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.clientEmail.trim())) throw new Error('El correo electrónico ingresado no tiene un formato válido.')
 
-  const settings = salonRepo.getSettings()
+  const [persistedSettings] = await db.select().from(salonSettings).limit(1)
+  const settings = persistedSettings || salonRepo.getSettings()
   const minNoticeHours = settings.minNoticeHoursForBooking || 2
   const bookingDateTime = new Date(`${data.date}T${data.time}:00`)
   if (data.date === new Date().toISOString().split('T')[0] && (bookingDateTime.getTime() - Date.now()) / 3600000 < minNoticeHours) {
     throw new Error(`Los turnos online requieren al menos ${minNoticeHours} horas de anticipación.`)
   }
 
-  const professionals = salonRepo.getProfessionals()
+  const persistedProfessionals = await db.select().from(professionalTable).where(eq(professionalTable.isActive, true))
+  const professionals = persistedProfessionals.length ? persistedProfessionals.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
   const availability = salonRepo.getAvailableSlots({
     serviceId: data.serviceId,
     techniqueId: data.techniqueId,
