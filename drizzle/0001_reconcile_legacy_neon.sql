@@ -42,6 +42,19 @@ CREATE TABLE IF NOT EXISTS professional (
   "updatedAt" timestamp NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS technique (id text PRIMARY KEY, "serviceId" text NOT NULL, name text NOT NULL, description text, "additionalPrice" numeric(12,2) NOT NULL DEFAULT 0, "additionalMinutes" integer NOT NULL DEFAULT 0, "isActive" boolean NOT NULL DEFAULT true, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS material (id text PRIMARY KEY, name text NOT NULL, category text NOT NULL, unit text NOT NULL, "currentStock" numeric(12,2) NOT NULL DEFAULT 0, "minStock" numeric(12,2) NOT NULL DEFAULT 5, "isActive" boolean NOT NULL DEFAULT true, "createdAt" timestamp NOT NULL DEFAULT now(), "updatedAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS service_material (id text PRIMARY KEY, "serviceId" text NOT NULL, "techniqueId" text, "materialId" text NOT NULL, "estimatedUsage" numeric(10,2) NOT NULL DEFAULT 1, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS professional_service (id text PRIMARY KEY, "professionalId" text NOT NULL, "serviceId" text NOT NULL);
+CREATE TABLE IF NOT EXISTS professional_schedule (id text PRIMARY KEY, "professionalId" text NOT NULL, "dayOfWeek" integer NOT NULL, "startTime" text NOT NULL, "endTime" text NOT NULL, "breakStartTime" text, "breakEndTime" text, "isActive" boolean NOT NULL DEFAULT true);
+CREATE TABLE IF NOT EXISTS professional_absence (id text PRIMARY KEY, "professionalId" text NOT NULL, "startDate" text NOT NULL, "endDate" text NOT NULL, reason text NOT NULL, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS schedule_block (id text PRIMARY KEY, "professionalId" text, "startDateTime" timestamp NOT NULL, "endDateTime" timestamp NOT NULL, reason text NOT NULL, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS appointment_service (id text PRIMARY KEY, "appointmentId" text NOT NULL, "serviceId" text NOT NULL, "techniqueId" text, "historicServiceName" text NOT NULL, "historicTechniqueName" text, "historicPrice" numeric(12,2) NOT NULL, "historicDurationMinutes" integer NOT NULL, "historicPrepMinutes" integer NOT NULL DEFAULT 0, "historicCleanupMinutes" integer NOT NULL DEFAULT 0, "sequenceOrder" integer NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS appointment_history (id text PRIMARY KEY, "appointmentId" text NOT NULL, action text NOT NULL, "actorUserId" text, details text, snapshot jsonb, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS payment (id text PRIMARY KEY, "appointmentId" text NOT NULL, amount numeric(12,2) NOT NULL, method text NOT NULL, type text NOT NULL, status text NOT NULL DEFAULT 'completed', notes text, "referenceNumber" text, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS inventory_movement (id text PRIMARY KEY, "materialId" text NOT NULL, type text NOT NULL, quantity numeric(10,2) NOT NULL, reason text NOT NULL, "appointmentId" text, "createdAt" timestamp NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS salon_setting (id text PRIMARY KEY, "salonName" text NOT NULL DEFAULT 'Atelier Beauty Studio', "timeZone" text NOT NULL DEFAULT 'America/Argentina/Buenos_Aires', currency text NOT NULL DEFAULT 'ARS', "minNoticeHoursForBooking" integer NOT NULL DEFAULT 2, "minNoticeHoursForCancellation" integer NOT NULL DEFAULT 24, "autoConfirmPublicBookings" boolean NOT NULL DEFAULT false, "defaultDepositType" text NOT NULL DEFAULT 'percentage', "defaultDepositPercentage" integer NOT NULL DEFAULT 30, "defaultDepositFixed" numeric(12,2) NOT NULL DEFAULT 5000, "updatedAt" timestamp NOT NULL DEFAULT now());
+
 -- Completa la tabla client existente sin eliminar ni sobrescribir registros.
 ALTER TABLE client ADD COLUMN IF NOT EXISTS "birthDate" date;
 ALTER TABLE client ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
