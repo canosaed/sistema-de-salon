@@ -517,7 +517,7 @@ export function runObligatoryScenariosTests() {
     if (!available.slots || available.slots.length === 0) {
       throw new Error('Debería retornar slots disponibles para servicio público')
     }
-    if (available.depositAmount <= 0) {
+    if (!available.depositAmount || available.depositAmount <= 0) {
       throw new Error('Debería calcular seña obligatoria para reserva pública')
     }
   })

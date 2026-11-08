@@ -136,15 +136,38 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
 
   const handleConfirmReservation = (e: React.FormEvent) => {
     e.preventDefault()
+    if (isPending) return
     setErrorMsg('')
 
-    if (!clientName.trim() || !clientPhone.trim()) {
+    const name = clientName.trim()
+    const phone = clientPhone.trim()
+
+    if (!name || !phone) {
       setErrorMsg('Por favor ingresá tu nombre y número de teléfono.')
       return
     }
 
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 6) {
+      setErrorMsg('Por favor ingresá un teléfono o WhatsApp de contacto válido.')
+      return
+    }
+
+    if (clientEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(clientEmail.trim())) {
+        setErrorMsg('El formato del correo electrónico no es válido.')
+        return
+      }
+    }
+
     if (!acceptPolicies) {
-      setErrorMsg('Debes aceptar las políticas de reserva y cancelación.')
+      setErrorMsg('Debes aceptar las políticas de reserva y cancelación para confirmar tu turno.')
+      return
+    }
+
+    if (!selectedTime) {
+      setErrorMsg('Por favor seleccioná un horario disponible.')
       return
     }
 
@@ -156,10 +179,10 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
           professionalId: selectedProfessionalId === 'any' ? undefined : selectedProfessionalId,
           date: selectedDate,
           time: selectedTime,
-          clientName,
-          clientPhone,
-          clientEmail,
-          notes: clientNotes,
+          clientName: name,
+          clientPhone: phone,
+          clientEmail: clientEmail.trim() || undefined,
+          notes: clientNotes.trim() || undefined,
         })
         setConfirmedBooking(res.appointment)
         setStep(4)

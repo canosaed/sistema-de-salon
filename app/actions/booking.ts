@@ -52,11 +52,37 @@ export async function createPublicBooking(data: {
   // Validación de fecha no pasada
   const todayStr = new Date().toISOString().split('T')[0]
   if (!data.date || data.date < todayStr) {
-    throw new Error('No es posible agendar turnos en fechas pasadas.')
+    throw new Error('No es posible agendar turnos en fechas pasadas ni fuera del calendario.')
   }
 
-  if (!data.time) {
+  if (!data.time || !/^\d{2}:\d{2}$/.test(data.time)) {
     throw new Error('Debe seleccionar un horario válido.')
+  }
+
+  // Validación de teléfono (mínimo 6 dígitos)
+  const phoneDigits = phone.replace(/\D/g, '')
+  if (phoneDigits.length < 6) {
+    throw new Error('Por favor ingrese un número de teléfono válido.')
+  }
+
+  // Validación de email si fue provisto
+  if (data.clientEmail && data.clientEmail.trim()) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(data.clientEmail.trim())) {
+      throw new Error('El correo electrónico ingresado no tiene un formato válido.')
+    }
+  }
+
+  // Verificar anticipación mínima si es para hoy
+  const settings = salonRepo.getSettings()
+  const minNoticeHours = settings.minNoticeHoursForBooking || 2
+  const now = new Date()
+  const [hours, minutes] = data.time.split(':').map(Number)
+  const bookingDateTime = new Date(`${data.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`)
+  const diffHours = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+
+  if (diffHours < minNoticeHours && data.date === todayStr) {
+    throw new Error(`Los turnos online requieren al menos ${minNoticeHours} horas de anticipación.`)
   }
 
   // Prevenir dobles reservas con control transaccional
