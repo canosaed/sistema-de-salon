@@ -97,7 +97,7 @@ export async function createPublicBooking(data: {
   const existingClient = await db.select({ id: publicClients.id }).from(publicClients).where(eq(publicClients.phone, phone)).limit(1)
   const clientId = existingClient[0]?.id || crypto.randomUUID()
   if (!existingClient[0]) {
-    await db.insert(publicClients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0, isActive: true })
+    await db.insert(publicClients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0 })
   }
 
   const appointment = {
