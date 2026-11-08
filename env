@@ -1,8 +1,0 @@
-# URL base de la aplicación
-BETTER_AUTH_URL=http://localhost:3000
-
-# Secreto para sesiones y tokens de Better Auth
-BETTER_AUTH_SECRET=un_secreto_seguro_para_better_auth_1234567890
-
-# Conexión a Base de Datos PostgreSQL (requerido para Better Auth / Drizzle)
-#DATABASE_URL=postgresql://postgres:12345678@localhost:5432/atelier_beauty
