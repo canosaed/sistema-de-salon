@@ -4,17 +4,38 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { appointments, clients, professionals } from '@/lib/db/schema'
+import { appointments, clients, payments, professionals, serviceCategories } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const persistedAppointments = await db.select({ appointment: appointments, client: clients, professional: professionals })
-    .from(appointments)
-    .innerJoin(clients, eq(appointments.clientId, clients.id))
-    .innerJoin(professionals, eq(appointments.professionalId, professionals.id))
-    .where(eq(clients.userId, session.user.id))
+  const [persistedAppointments, persistedCategories, persistedPayments] = await Promise.all([
+    db.select({ appointment: appointments, client: clients, professional: professionals })
+      .from(appointments)
+      .innerJoin(clients, eq(appointments.clientId, clients.id))
+      .innerJoin(professionals, eq(appointments.professionalId, professionals.id))
+      .where(eq(clients.userId, session.user.id)),
+    db.select().from(serviceCategories),
+    db.select({ payment: payments, appointment: appointments, client: clients })
+      .from(payments)
+      .innerJoin(appointments, eq(payments.appointmentId, appointments.id))
+      .innerJoin(clients, eq(appointments.clientId, clients.id))
+      .where(eq(clients.userId, session.user.id)),
+  ])
+  const dashboardPayments = persistedPayments.map(({ payment, client }) => ({
+    id: payment.id,
+    appointmentId: payment.appointmentId,
+    clientName: client.name,
+    amount: Number(payment.amount),
+    method: payment.method,
+    type: payment.type,
+    status: payment.status,
+    notes: payment.notes || '',
+    createdAt: payment.createdAt.toISOString(),
+  }))
+
+
   const dashboardAppointments = [
     ...salonRepo.getAppointments(),
     ...persistedAppointments.map(({ appointment, client, professional }) => ({
@@ -39,14 +60,14 @@ export async function getDashboardData() {
   ]
 
   return {
-    categories: salonRepo.getCategories(),
+    categories: persistedCategories.length ? persistedCategories : salonRepo.getCategories(),
     services: salonRepo.getServices(),
     techniques: salonRepo.getTechniques(),
     materials: salonRepo.getMaterials(),
     professionals: salonRepo.getProfessionals(),
     clients: salonRepo.getClients(),
     appointments: dashboardAppointments,
-    payments: salonRepo.getPayments(),
+    payments: dashboardPayments.length ? dashboardPayments : salonRepo.getPayments(),
     inventoryMovements: salonRepo.getInventoryMovements(),
     settings: salonRepo.getSettings(),
     schedules: salonRepo.getAllSchedules(),
