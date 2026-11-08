@@ -553,17 +553,33 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             id: clientForm.id,
             name: clientForm.name,
             phone: clientForm.phone,
+            email: clientForm.email,
+            notes: clientForm.notes,
           })
           setClients((prev) => prev.map((c) => (c.id === clientForm.id ? { ...c, ...updated } : c)))
         } else {
           const created = await createClient({
             name: clientForm.name,
             phone: clientForm.phone,
+            email: clientForm.email,
+            notes: clientForm.notes,
           })
           setClients((prev) => [created, ...prev])
         }
         setShowClientModal(false)
         setClientForm({ id: '', name: '', phone: '', email: '', notes: '' })
+      } catch (err: any) {
+        alert(err.message)
+      }
+    })
+  }
+
+  const handleDeleteClient = (clientId: string, clientName: string) => {
+    if (!confirm(`¿Eliminar o dar de baja a la clienta "${clientName}"?`)) return
+    startTransition(async () => {
+      try {
+        await deleteClient(clientId)
+        setClients((prev) => prev.filter((c) => c.id !== clientId))
       } catch (err: any) {
         alert(err.message)
       }
@@ -1368,21 +1384,30 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           <td><span className="visits-badge">{c.visits} turnos</span></td>
                           <td>{c.notes || '—'}</td>
                           <td>
-                            <button
-                              className="btn-sm"
-                              onClick={() => {
-                                setClientForm({
-                                  id: c.id,
-                                  name: c.name,
-                                  phone: c.phone,
-                                  email: c.email || '',
-                                  notes: c.notes || '',
-                                })
-                                setShowClientModal(true)
-                              }}
-                            >
-                              Editar
-                            </button>
+                            <div className="table-actions-cluster">
+                              <button
+                                className="btn-sm"
+                                onClick={() => {
+                                  setClientForm({
+                                    id: c.id,
+                                    name: c.name,
+                                    phone: c.phone,
+                                    email: c.email || '',
+                                    notes: c.notes || '',
+                                  })
+                                  setShowClientModal(true)
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                className="btn-sm btn-cancel"
+                                onClick={() => handleDeleteClient(c.id, c.name)}
+                                title="Eliminar clienta"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2340,29 +2365,47 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               <h3 id="modal-title-client">{clientForm.id ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
               <button className="icon-btn" onClick={() => setShowClientModal(false)} aria-label="Cerrar modal"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSaveClient}>
-              <label>
-                Nombre Completo:
+            <form onSubmit={handleSaveClient} className="modern-form">
+              <label className="field-group">
+                <span className="field-label">Nombre Completo</span>
                 <input
                   required
+                  className="field-input"
                   value={clientForm.name}
                   onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+                  placeholder="Ej. Sofía Martínez"
                 />
               </label>
-              <label>
-                Teléfono:
-                <input
-                  required
-                  value={clientForm.phone}
-                  onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                />
-              </label>
-              <label>
-                Email (opcional):
-                <input
-                  type="email"
-                  value={clientForm.email}
-                  onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+              <div className="input-row">
+                <label className="field-group">
+                  <span className="field-label">Teléfono / WhatsApp</span>
+                  <input
+                    required
+                    className="field-input"
+                    value={clientForm.phone}
+                    onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                    placeholder="11 5555 0182"
+                  />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">Email (opcional)</span>
+                  <input
+                    type="email"
+                    className="field-input"
+                    value={clientForm.email}
+                    onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                    placeholder="sofia@ejemplo.com"
+                  />
+                </label>
+              </div>
+              <label className="field-group">
+                <span className="field-label">Observaciones y Preferencias (opcional)</span>
+                <textarea
+                  rows={2}
+                  className="field-textarea"
+                  value={clientForm.notes}
+                  onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+                  placeholder="Alergias, preferencias o detalles de la clienta..."
                 />
               </label>
               <div className="modal-foot">
