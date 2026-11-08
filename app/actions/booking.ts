@@ -2,9 +2,7 @@
 
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { user } from '@/lib/db/schema'
-import { publicAppointments } from '@/lib/db/public-appointments'
-import { publicClients } from '@/lib/db/public-client'
+import { appointments, clients, user } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 async function getSalonOwnerId() {
@@ -32,18 +30,19 @@ export async function checkPublicAvailability(params: {
   const availability = salonRepo.getAvailableSlots(params)
   const professionals = salonRepo.getProfessionals()
   const selectedProfessional = professionals.find((pro) => pro.id === params.professionalId)
-  const booked = await db.select({ time: publicAppointments.appointmentTime, professional: publicAppointments.professional })
-    .from(publicAppointments)
-    .where(and(eq(publicAppointments.appointmentDate, params.dateStr), eq(publicAppointments.status, 'Pendiente')))
-
-  const bookedTimes = new Set(booked.map((appointment) => `${appointment.time}|${appointment.professional}`))
+  const booked = await db.select({ startDateTime: appointments.startDateTime, professionalId: appointments.professionalId })
+    .from(appointments)
+    .where(eq(appointments.status, 'pending_confirmation'))
+  const bookedTimes = new Set(booked
+    .filter((appointment) => appointment.startDateTime?.toISOString().startsWith(params.dateStr))
+    .map((appointment) => `${appointment.startDateTime?.toISOString().slice(11, 16)}|${appointment.professionalId}`))
   const slots = availability.slots.filter((slot) => {
     const availableProfessionalIds = params.professionalId && params.professionalId !== 'any'
       ? [params.professionalId]
       : slot.availableProfessionalIds
     return availableProfessionalIds.some((professionalId) => {
       const professional = professionals.find((pro) => pro.id === professionalId)
-      return professional && !bookedTimes.has(`${slot.time}|${professional.name}`)
+      return professional && !bookedTimes.has(`${slot.time}|${professional.id}`)
     })
   })
 
@@ -94,38 +93,43 @@ export async function createPublicBooking(data: {
     throw new Error('Ese horario ya no está disponible. Elegí otro horario.')
   }
 
-  const conflicting = await db.select({ id: publicAppointments.id }).from(publicAppointments).where(and(
-    eq(publicAppointments.appointmentDate, data.date),
-    eq(publicAppointments.appointmentTime, data.time),
-    eq(publicAppointments.professional, assignedProfessional.name),
-    eq(publicAppointments.status, 'Pendiente'),
-  )).limit(1)
-  if (conflicting.length) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
-
-  const ownerId = await getSalonOwnerId()
-  const existingClient = await db.select({ id: publicClients.id }).from(publicClients).where(eq(publicClients.phone, phone)).limit(1)
-  const clientId = existingClient[0]?.id || crypto.randomUUID()
-  if (!existingClient[0]) {
-    await db.insert(publicClients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0 })
-  }
-
-  const appointment = {
-    id: crypto.randomUUID(),
-    userId: ownerId,
-    client: name,
-    service: service.name,
-    appointmentDate: data.date,
-    appointmentTime: data.time,
-    professional: assignedProfessional.name,
-    status: 'Pendiente',
-  }
-  await db.insert(publicAppointments).values(appointment)
-
   const totalDurationMinutes = availability.totalDurationMinutes || service.durationMinutes
   const totalPrice = Number(availability.totalPrice ?? service.price ?? 0)
   const requiredDeposit = Number(availability.depositAmount ?? (service.depositType === 'fixed'
     ? service.depositValue
     : Math.round((totalPrice * Number(service.depositValue ?? 30)) / 100)))
+  const startDateTime = new Date(`${data.date}T${data.time}:00`)
+  const endDateTime = new Date(startDateTime.getTime() + totalDurationMinutes * 60_000)
+  const conflicting = (await db.select({ id: appointments.id, startDateTime: appointments.startDateTime, endDateTime: appointments.endDateTime })
+    .from(appointments)
+    .where(and(eq(appointments.professionalId, assignedProfessional.id), eq(appointments.status, 'pending_confirmation'))))
+    .find((existing) => existing.startDateTime && existing.endDateTime && startDateTime < existing.endDateTime && endDateTime > existing.startDateTime)
+  if (conflicting) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
+
+  const ownerId = await getSalonOwnerId()
+  const existingClient = await db.select({ id: clients.id }).from(clients).where(eq(clients.phone, phone)).limit(1)
+  const clientId = existingClient[0]?.id || crypto.randomUUID()
+  if (!existingClient[0]) {
+    await db.insert(clients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0 })
+  }
+
+  const appointment = {
+    id: crypto.randomUUID(),
+    clientId,
+    professionalId: assignedProfessional.id,
+    serviceId: data.serviceId,
+    startDateTime,
+    endDateTime,
+    totalDurationMinutes,
+    totalPrice: totalPrice.toFixed(2),
+    requiredDeposit: requiredDeposit.toFixed(2),
+    status: 'pending_confirmation',
+    paymentStatus: 'pending',
+    notes: data.notes?.trim() || 'Reserva online',
+    isPublicBooking: true,
+  }
+  await db.insert(appointments).values(appointment)
+
 
   return {
     success: true,

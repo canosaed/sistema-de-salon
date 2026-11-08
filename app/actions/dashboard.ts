@@ -4,30 +4,37 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { publicAppointments } from '@/lib/db/public-appointments'
+import { appointments, clients, professionals } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
 
-  const persistedAppointments = await db.select().from(publicAppointments).where(eq(publicAppointments.userId, session.user.id))
-  const appointments = [
+  const persistedAppointments = await db.select({ appointment: appointments, client: clients, professional: professionals })
+    .from(appointments)
+    .innerJoin(clients, eq(appointments.clientId, clients.id))
+    .innerJoin(professionals, eq(appointments.professionalId, professionals.id))
+    .where(eq(clients.userId, session.user.id))
+  const dashboardAppointments = [
     ...salonRepo.getAppointments(),
-    ...persistedAppointments.map((appointment) => ({
+    ...persistedAppointments.map(({ appointment, client, professional }) => ({
       id: appointment.id,
-      clientId: undefined,
-      clientName: appointment.client,
-      clientPhone: '',
-      serviceName: appointment.service,
-      date: appointment.appointmentDate,
-      time: appointment.appointmentTime,
-      professionalId: undefined,
-      professionalName: appointment.professional,
-      status: 'pending_confirmation',
-      paymentStatus: 'pending',
-      isPublicBooking: true,
-      notes: 'Reserva online',
+      clientId: appointment.clientId,
+      clientName: client.name,
+      clientPhone: client.phone,
+      serviceName: 'Reserva online',
+      date: appointment.startDateTime?.toISOString().slice(0, 10) || '',
+      time: appointment.startDateTime?.toISOString().slice(11, 16) || '',
+      professionalId: appointment.professionalId,
+      professionalName: professional.name,
+      status: appointment.status,
+      paymentStatus: appointment.paymentStatus,
+      isPublicBooking: appointment.isPublicBooking,
+      notes: appointment.notes || 'Reserva online',
+      totalDurationMinutes: appointment.totalDurationMinutes,
+      totalPrice: Number(appointment.totalPrice),
+      requiredDeposit: Number(appointment.requiredDeposit),
       createdAt: appointment.createdAt.toISOString(),
     })),
   ]
@@ -39,7 +46,7 @@ export async function getDashboardData() {
     materials: salonRepo.getMaterials(),
     professionals: salonRepo.getProfessionals(),
     clients: salonRepo.getClients(),
-    appointments,
+    appointments: dashboardAppointments,
     payments: salonRepo.getPayments(),
     inventoryMovements: salonRepo.getInventoryMovements(),
     settings: salonRepo.getSettings(),
