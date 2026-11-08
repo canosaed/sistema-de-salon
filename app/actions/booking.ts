@@ -2,7 +2,7 @@
 
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { appointments, clients, user } from '@/lib/db/schema'
+import { appointments, clients, professionals as professionalTable, serviceCategories, services as serviceTable, techniques as techniqueTable, user } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 async function getSalonOwnerId() {
@@ -12,10 +12,16 @@ async function getSalonOwnerId() {
 }
 
 export async function getPublicBookingCatalog() {
-  const categories = salonRepo.getCategories()
-  const services = salonRepo.getServices().filter((s) => s.allowPublicBooking)
-  const techniques = salonRepo.getTechniques()
-  const professionals = salonRepo.getProfessionals()
+  const [categoryRows, serviceRows, techniqueRows, professionalRows] = await Promise.all([
+    db.select().from(serviceCategories).orderBy(asc(serviceCategories.order)),
+    db.select().from(serviceTable).where(eq(serviceTable.allowPublicBooking, true)),
+    db.select().from(techniqueTable).where(eq(techniqueTable.isActive, true)),
+    db.select().from(professionalTable).where(eq(professionalTable.isActive, true)),
+  ])
+  const categories = categoryRows.length ? categoryRows : salonRepo.getCategories()
+  const services = serviceRows.length ? serviceRows.map((service) => ({ ...service, price: Number(service.price), depositValue: Number(service.depositValue) })) : salonRepo.getServices().filter((s) => s.allowPublicBooking)
+  const techniques = techniqueRows.length ? techniqueRows.map((technique) => ({ ...technique, additionalPrice: Number(technique.additionalPrice) })) : salonRepo.getTechniques()
+  const professionals = professionalRows.length ? professionalRows.map((professional) => ({ ...professional, specialties: professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
   const settings = salonRepo.getSettings()
 
   return { categories, services, techniques, professionals, settings }
