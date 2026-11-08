@@ -2,8 +2,9 @@
 
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { clients, user } from '@/lib/db/schema'
+import { user } from '@/lib/db/schema'
 import { publicAppointments } from '@/lib/db/public-appointments'
+import { publicClients } from '@/lib/db/public-client'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 async function getSalonOwnerId() {
@@ -93,10 +94,10 @@ export async function createPublicBooking(data: {
   if (conflicting.length) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
 
   const ownerId = await getSalonOwnerId()
-  const existingClient = await db.select({ id: clients.id }).from(clients).where(eq(clients.phone, phone)).limit(1)
+  const existingClient = await db.select({ id: publicClients.id }).from(publicClients).where(eq(publicClients.phone, phone)).limit(1)
   const clientId = existingClient[0]?.id || crypto.randomUUID()
   if (!existingClient[0]) {
-    await db.insert(clients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0, isActive: true })
+    await db.insert(publicClients).values({ id: clientId, userId: ownerId, name, phone, email: data.clientEmail?.trim() || null, notes: data.notes?.trim() || null, visits: 0, isActive: true })
   }
 
   const appointment = {
