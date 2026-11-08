@@ -1,8 +1,37 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { publicAppointments } from '@/lib/db/public-appointments'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+
+  const persistedAppointments = await db.select().from(publicAppointments).where(eq(publicAppointments.userId, session.user.id))
+  const appointments = [
+    ...salonRepo.getAppointments(),
+    ...persistedAppointments.map((appointment) => ({
+      id: appointment.id,
+      clientId: undefined,
+      clientName: appointment.client,
+      clientPhone: '',
+      serviceName: appointment.service,
+      date: appointment.appointmentDate,
+      time: appointment.appointmentTime,
+      professionalId: undefined,
+      professionalName: appointment.professional,
+      status: 'pending_confirmation',
+      paymentStatus: 'pending',
+      isPublicBooking: true,
+      notes: 'Reserva online',
+      createdAt: appointment.createdAt.toISOString(),
+    })),
+  ]
+
   return {
     categories: salonRepo.getCategories(),
     services: salonRepo.getServices(),
@@ -10,7 +39,7 @@ export async function getDashboardData() {
     materials: salonRepo.getMaterials(),
     professionals: salonRepo.getProfessionals(),
     clients: salonRepo.getClients(),
-    appointments: salonRepo.getAppointments(),
+    appointments,
     payments: salonRepo.getPayments(),
     inventoryMovements: salonRepo.getInventoryMovements(),
     settings: salonRepo.getSettings(),
