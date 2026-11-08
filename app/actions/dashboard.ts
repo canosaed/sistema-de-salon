@@ -10,7 +10,6 @@ import { salonRepo } from '@/lib/db/salon-repository'
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-
   const persistedAppointments = await db.select({ appointment: appointments, client: clients, professional: professionals })
     .from(appointments)
     .innerJoin(clients, eq(appointments.clientId, clients.id))
