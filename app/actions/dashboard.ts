@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { appointments, clients, payments, professionals, serviceCategories } from '@/lib/db/schema'
+import { appointmentHistory, appointments, clients, payments, professionals, serviceCategories } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export async function getDashboardData() {
@@ -119,7 +119,12 @@ export async function updateAppointmentStatusAction(
   status: 'pending_confirmation' | 'confirmed' | 'waiting' | 'in_progress' | 'completed' | 'cancelled' | 'no_show',
   reason?: string
 ) {
-  return salonRepo.updateAppointmentStatus(appointmentId, status, reason)
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  const [appointment] = await db.update(appointments).set({ status, updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
+  if (!appointment) return salonRepo.updateAppointmentStatus(appointmentId, status, reason)
+  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: `status:${status}`, actorUserId: session.user.id, details: reason || null, snapshot: appointment })
+  return appointment
 }
 
 export async function rescheduleAppointmentAction(
@@ -141,7 +146,12 @@ export async function registerAppointmentPaymentAction(input: {
   type: 'deposit' | 'partial' | 'full' | 'refund'
   notes?: string
 }) {
-  return salonRepo.registerPayment(input)
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error('El importe debe ser mayor a 0.')
+  const [payment] = await db.insert(payments).values({ id: crypto.randomUUID(), appointmentId: input.appointmentId, amount: String(input.amount), method: input.method, type: input.type, status: 'completed', notes: input.notes?.trim() || null }).returning()
+  await db.update(appointments).set({ paymentStatus: input.type === 'full' ? 'paid' : 'partial', updatedAt: new Date() }).where(eq(appointments.id, input.appointmentId))
+  return { payment: { ...payment, amount: Number(payment.amount), clientName: '', createdAt: payment.createdAt.toISOString() }, balance: { paymentStatus: input.type === 'full' ? 'paid' : 'partial' } }
 }
 
 export async function recordMaterialConsumptionAction(input: {
