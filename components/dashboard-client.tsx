@@ -1456,7 +1456,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   <div key={s.id} className="service-admin-card">
                     <div className="srv-card-top">
                       <div>
-                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '')}</span>
+                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '') || 'Sin categoría'}</span>
                         <h4>{s.name}</h4>
                       </div>
                       <span className="srv-price">${Number(s.price).toLocaleString('es-AR')} <small>ARS</small></span>
