@@ -79,6 +79,9 @@ ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "requiredDeposit" numeric(10, 2
 ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "paymentStatus" text NOT NULL DEFAULT 'pending';
 ALTER TABLE appointment ADD COLUMN IF NOT EXISTS notes text;
 ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "isPublicBooking" boolean NOT NULL DEFAULT false;
+ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "clientPreferences" jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "cancellationReason" text;
+ALTER TABLE appointment ADD COLUMN IF NOT EXISTS "cancelledAt" timestamp;
 
 -- Backfill no destructivo de las reservas legacy existentes.
 INSERT INTO professional (id, "userId", name)
