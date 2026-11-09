@@ -1,5 +1,10 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { professionalSchedules, professionals } from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 
 export interface ProfessionalInput {
@@ -11,78 +16,85 @@ export interface ProfessionalInput {
   serviceIds?: string[]
 }
 
-/**
- * Consulta listado activo de profesionales
- */
+async function requireUser() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+}
+
 export async function getProfessionals() {
-  return salonRepo.getProfessionals()
+  const rows = await db.select().from(professionals).where(eq(professionals.isActive, true))
+  return rows.length ? rows : salonRepo.getProfessionals()
 }
 
-/**
- * Alta de una nueva profesional
- */
 export async function createProfessional(input: ProfessionalInput) {
-  if (!input.name || !input.name.trim()) throw new Error('El nombre de la profesional es obligatorio.')
-  if (!input.phone || !input.phone.trim()) throw new Error('El teléfono de contacto es obligatorio.')
+  await requireUser()
+  if (!input.name?.trim()) throw new Error('El nombre de la profesional es obligatorio.')
+  if (!input.phone?.trim()) throw new Error('El teléfono de contacto es obligatorio.')
 
-  return salonRepo.createProfessional(input)
+  const [professional] = await db.insert(professionals).values({
+    id: crypto.randomUUID(),
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    email: input.email?.trim() || null,
+    specialties: input.specialties || null,
+    initials: input.initials?.trim() || input.name.trim().split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
+    isActive: true,
+  }).returning()
+  return professional
 }
 
-/**
- * Modificación de una profesional existente
- */
 export async function updateProfessional(id: string, input: Partial<ProfessionalInput>) {
+  await requireUser()
   if (!id) throw new Error('ID de profesional no provisto.')
-  return salonRepo.updateProfessional(id, input)
+  const [professional] = await db.update(professionals).set({
+    ...(input.name !== undefined && { name: input.name.trim() }),
+    ...(input.phone !== undefined && { phone: input.phone.trim() }),
+    ...(input.email !== undefined && { email: input.email.trim() || null }),
+    ...(input.specialties !== undefined && { specialties: input.specialties || null }),
+    ...(input.initials !== undefined && { initials: input.initials.trim() || null }),
+    updatedAt: new Date(),
+  }).where(eq(professionals.id, id)).returning()
+  return professional
 }
 
-/**
- * Baja lógica de profesional (conserva turnos anteriores e historial según regla 4.6)
- */
 export async function deleteProfessional(id: string) {
+  await requireUser()
   if (!id) throw new Error('ID de profesional no provisto.')
-  return salonRepo.deleteProfessional(id)
+  const [professional] = await db.update(professionals).set({ isActive: false, updatedAt: new Date() }).where(eq(professionals.id, id)).returning()
+  return professional
 }
 
-/**
- * Operaciones ABM para Turnos y Horarios de Profesionales
- */
 export async function saveScheduleAction(formData: FormData) {
+  await requireUser()
   const id = formData.get('id') as string | null
   const professionalId = formData.get('professionalId') as string
-  const dayOfWeek = parseInt(formData.get('dayOfWeek') as string, 10)
-  const startTime = formData.get('startTime') as string
-  const endTime = formData.get('endTime') as string
-  const breakStartTime = (formData.get('breakStartTime') as string) || null
-  const breakEndTime = (formData.get('breakEndTime') as string) || null
+  const dayOfWeek = Number(formData.get('dayOfWeek'))
+  const startTime = String(formData.get('startTime') || '')
+  const endTime = String(formData.get('endTime') || '')
+  const breakStartTime = String(formData.get('breakStartTime') || '') || null
+  const breakEndTime = String(formData.get('breakEndTime') || '') || null
   const isActive = formData.get('isActive') !== 'false'
+  if (!professionalId || !startTime || !endTime || dayOfWeek < 0 || dayOfWeek > 6) throw new Error('Horario inválido.')
 
+  const values = { professionalId, dayOfWeek, startTime, endTime, breakStartTime, breakEndTime, isActive }
   if (id) {
-    return salonRepo.updateSchedule(id, {
-      dayOfWeek,
-      startTime,
-      endTime,
-      breakStartTime,
-      breakEndTime,
-      isActive,
-    })
-  } else {
-    return salonRepo.createSchedule({
-      professionalId,
-      dayOfWeek,
-      startTime,
-      endTime,
-      breakStartTime,
-      breakEndTime,
-      isActive,
-    })
+    const [schedule] = await db.update(professionalSchedules).set(values).where(eq(professionalSchedules.id, id)).returning()
+    return schedule
   }
+  const [schedule] = await db.insert(professionalSchedules).values({ id: crypto.randomUUID(), ...values }).returning()
+  return schedule
 }
 
 export async function toggleScheduleAction(id: string) {
-  return salonRepo.toggleScheduleActive(id)
+  await requireUser()
+  const [schedule] = await db.select().from(professionalSchedules).where(eq(professionalSchedules.id, id)).limit(1)
+  if (!schedule) throw new Error('Horario no encontrado.')
+  const [updated] = await db.update(professionalSchedules).set({ isActive: !schedule.isActive }).where(eq(professionalSchedules.id, id)).returning()
+  return updated
 }
 
 export async function deleteScheduleAction(id: string) {
-  return salonRepo.deleteSchedule(id)
+  await requireUser()
+  const [deleted] = await db.delete(professionalSchedules).where(eq(professionalSchedules.id, id)).returning()
+  return deleted
 }
