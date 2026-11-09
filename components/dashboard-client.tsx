@@ -861,7 +861,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       }}
                     >
                       <div className="catalog-item-main">
-                        <span className="srv-category-tag">{s.categoryId.replace('cat-', '')}</span>
+                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '') || 'Sin categoría'}</span>
                         <h4 className="catalog-item-name">{s.name}</h4>
                         <div className="catalog-item-meta">
                           <span className="srv-time-badge"><Clock3 size={12} /> {s.durationMinutes} min</span>
