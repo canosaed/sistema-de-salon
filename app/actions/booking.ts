@@ -20,7 +20,7 @@ export async function getPublicBookingCatalog() {
     db.select().from(salonSettings).limit(1),
   ])
   const categories = categoryRows.length ? categoryRows : salonRepo.getCategories()
-  const services = serviceRows.length ? serviceRows.map((service) => ({ ...service, price: Number(service.price), depositValue: Number(service.depositValue) })) : salonRepo.getServices().filter((s) => s.allowPublicBooking)
+  const services = serviceRows.length ? serviceRows.map((service) => ({ ...service, categoryId: service.categoryId || categories[0]?.id || '', price: Number(service.price), depositValue: Number(service.depositValue) })) : salonRepo.getServices().filter((s) => s.allowPublicBooking)
   const techniques = techniqueRows.length ? techniqueRows.map((technique) => ({ ...technique, additionalPrice: Number(technique.additionalPrice) })) : salonRepo.getTechniques()
   const professionals = professionalRows.length ? professionalRows.map((professional) => ({ ...professional, specialties: Array.isArray(professional.specialties) ? professional.specialties : professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] })) : salonRepo.getProfessionals()
   const settings = settingRows[0] || salonRepo.getSettings()
