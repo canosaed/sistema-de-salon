@@ -10,6 +10,7 @@ export const user = pgTable("user", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   role: text("role").notNull().default("receptionist"), // admin, professional, receptionist
+  isActive: boolean("isActive").notNull().default(true),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 })
@@ -276,4 +277,15 @@ export const salonSettings = pgTable("salon_setting", {
   defaultDepositPercentage: integer("defaultDepositPercentage").notNull().default(30),
   defaultDepositFixed: numeric("defaultDepositFixed", { precision: 12, scale: 2 }).notNull().default("5000"),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+})
+
+export const salonInvitations = pgTable("salon_invitation", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  tokenHash: text("tokenHash").notNull().unique(),
+  role: text("role").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  createdBy: text("createdBy"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
 })

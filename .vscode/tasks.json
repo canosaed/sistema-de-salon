@@ -1,0 +1,350 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build booking changes",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Build transactional booking",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Run business logic tests",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build implementation",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Rebuild corrected implementation",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Inspect PostgreSQL state",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"db:preflight"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run PostgreSQL concurrency test",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:db"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run PostgreSQL Server Action integration tests",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:actions"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run PostgreSQL failure recovery test",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:db:failure"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run public booking browser E2E",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:e2e:public"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Apply verified PostgreSQL migrations",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"db:migrate:safe"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Prepare role E2E fixtures",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"e2e:role-fixtures",
+				"setup"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Clean role E2E fixtures",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"e2e:role-fixtures",
+				"cleanup",
+				"${input:roleE2ERunId}"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run role authorization E2E tests",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:e2e:roles"
+			],
+			"options": {
+				"env": {
+					"SALON_RUN_DB_TESTS": "1"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start local E2E server",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"dev",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3000"
+			],
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "next",
+				"pattern": {
+					"regexp": "^$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Starting...",
+					"endsPattern": "Ready in"
+				}
+			}
+		},
+		{
+			"label": "Check local E2E server listener",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object -ExpandProperty OwningProcess"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Restart stale local E2E server",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$targetPid = [int]'${input:localE2EServerPid}'; $listener = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction Stop | Where-Object OwningProcess -eq $targetPid; if (-not $listener) { throw 'PID is not listening on the local E2E port 3000.' }; Stop-Process -Id $targetPid"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Final action integration validation",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_RUN_DB_TESTS='1'; pnpm test:actions"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Public booking E2E validation",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_RUN_DB_TESTS='1'; pnpm test:e2e:public"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Diagnose public booking E2E",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_RUN_DB_TESTS='1'; pnpm test:e2e:public"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Repeat public booking E2E",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_RUN_DB_TESTS='1'; pnpm test:e2e:public"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Final audit verification suite",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_RUN_DB_TESTS='1'; pnpm test; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm test:db; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm test:e2e:roles; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm db:preflight; exit $LASTEXITCODE"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Load local development seed data",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:SALON_ALLOW_DEV_SEED='1'; pnpm db:seed:dev; $code=$LASTEXITCODE; Remove-Item Env:SALON_ALLOW_DEV_SEED -ErrorAction SilentlyContinue; exit $code"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect local appointment rows",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"exec",
+				"tsx",
+				"-e",
+				"import { loadEnvConfig } from '@next/env'; import { Client } from 'pg'; loadEnvConfig(process.cwd()); const db = new Client({ connectionString: process.env.DATABASE_URL }); await db.connect(); console.log(JSON.stringify((await db.query(`SELECT id, status, \"isPublicBooking\", \"startDateTime\" FROM appointment ORDER BY \"createdAt\" DESC`)).rows, null, 2)); await db.end();"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect local appointment records",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"exec",
+				"tsx",
+				"scripts/inspect-appointments.tmp.ts"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "roleE2ERunId",
+			"type": "promptString",
+			"description": "UUID de la ejecución de fixtures de roles que se limpiará",
+			"password": false
+		},
+		{
+			"id": "localE2EServerPid",
+			"type": "promptString",
+			"description": "PID del listener local de E2E validado en el puerto 3000",
+			"password": false
+		}
+	]
+}

@@ -67,9 +67,13 @@ Crear un archivo `.env` o `.env.local` en la raíz del proyecto basándose en la
 ```env
 # URL base de la aplicación
 BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Secreto para sesiones y tokens de Better Auth (mínimo 32 caracteres recomendados)
 BETTER_AUTH_SECRET=un_secreto_seguro_para_better_auth_1234567890
+
+# Token inicial de un solo uso para provisionar la primera cuenta administradora (mínimo 32 caracteres)
+SALON_SETUP_TOKEN=reemplazar_por_un_token_aleatorio_de_32_caracteres_o_mas
 
 # Conexión a Base de Datos PostgreSQL
 DATABASE_URL=postgresql://usuario:password@localhost:5432/atelier_beauty
@@ -117,6 +121,8 @@ El proyecto cuenta con scripts configurados en `package.json` para gestionar el 
 |---|---|---|
 | `pnpm db:generate` | **Generar migración** | Analiza `lib/db/schema.ts` y genera los archivos de migración `.sql` en `./drizzle`. |
 | `pnpm db:migrate` | **Aplicar migraciones** | Ejecuta las migraciones pendientes sobre la base de datos configurada en `DATABASE_URL`. |
+| `pnpm db:preflight` | **Inspección de solo lectura** | Informa base conectada, compatibilidad del esquema, migraciones y guardia de solapamientos, sin cambiar datos. |
+| `pnpm db:migrate:safe` | **Migrar un esquema existente** | Solo reconcilia el baseline si las tablas/columnas coinciden con el snapshot y no hay turnos activos superpuestos; después aplica migraciones pendientes y verifica/repara el índice parcial de turnos activos. |
 | `pnpm db:push` | **Sincronización directa** | Aplica los cambios de esquema directamente sobre PostgreSQL sin generar archivos SQL (ideal para prototipado rápido). |
 | `pnpm db:studio` | **Drizzle Studio** | Abre una interfaz visual web interactiva en el navegador para explorar y editar los datos de las tablas. |
 
@@ -136,6 +142,16 @@ El proyecto cuenta con scripts configurados en `package.json` para gestionar el 
    ```bash
    pnpm db:push
    ```
+
+Antes de migrar una base existente, inspeccioná el destino:
+
+```bash
+pnpm db:preflight
+```
+
+Si la base ya tiene las tablas del baseline pero carece del historial Drizzle, usá `pnpm db:migrate:safe` en lugar de `pnpm db:migrate`. El comando verifica el snapshot, las restricciones básicas y que no existan turnos activos superpuestos antes de registrar el baseline. Si el esquema no coincide, se detiene sin aplicar migraciones. No uses `db:push` para reconciliar una base existente sin revisar el diff.
+
+Para preparar una base local nueva con datos ficticios de desarrollo, consulta [Base de datos local para desarrollo](./docs/DESARROLLO-BASE-DE-DATOS.md). El proceso requiere habilitación explícita y solo acepta una conexión PostgreSQL local.
 
 3. **Explorar las tablas con Drizzle Studio:**
    ```bash
@@ -187,34 +203,74 @@ pnpm start
 
 ---
 
-### 6. Ejecución de Pruebas Obligatorias
+### 6. Pruebas automatizadas disponibles
 
-El sistema incluye una suite de pruebas automatizadas que valida exhaustivamente los **15 escenarios funcionales obligatorios** exigidos en las especificaciones del negocio:
-
-1. Reserva pública desde celular.
-2. Creación manual de turno en recepción.
-3. Detección y bloqueo de solicitudes simultáneas en la misma profesional.
-4. Prevención de dobles reservas concurrentes en el mismo horario.
-5. Selección múltiple de servicios con cálculo secuencial de duraciones y preparación/limpieza.
-6. Inmutabilidad histórica de turnos contratados ante cambios de catálogo.
-7. Respeto de jornadas laborales, horarios y descansos intermedios.
-8. Registro de señas y cálculo de saldos.
-9. Pagos parciales y cancelación final de deuda.
-10. Cancelación de turnos y liberación inmediata del horario en la agenda.
-11. Reprogramación de turnos con validación de no colisión.
-12. Pérdida de conexión y almacenamiento en cola offline.
-13. Recuperación de conexión y sincronización de datos.
-14. Detección de conflictos priorizando la nube como fuente de verdad.
-15. Control de consumo y movimientos de stock en inventario.
-
-Para ejecutar las pruebas:
-Con el servidor en marcha (`pnpm start` o `pnpm dev`), consulta el endpoint de pruebas:
+Las pruebas unitarias cubren reglas puras de duración/precio, disponibilidad, colisiones, saldos y permisos:
 
 ```bash
-curl http://localhost:3000/api/tests
+pnpm test
 ```
 
-O visita en tu navegador: [http://localhost:3000/api/tests](http://localhost:3000/api/tests) para obtener el reporte JSON detallado con los 15 escenarios verificados al 100%.
+Las pruebas PostgreSQL de CRUD/persistencia y concurrencia requieren `SALON_RUN_DB_TESTS=1` y están restringidas a un servidor local. Crean fixtures temporales y los eliminan al terminar:
+
+```powershell
+$env:SALON_RUN_DB_TESTS = "1"
+pnpm test:db
+```
+
+La integración de Server Actions ejercita todas las acciones exportadas contra PostgreSQL local real; solo sustituye el límite de sesión/autorización para comprobar permisos de admin y recepción. También crea y limpia registros temporales:
+
+```powershell
+$env:SALON_RUN_DB_TESTS = "1"
+pnpm test:actions
+```
+
+Para el E2E completo del portal público (navegador → disponibilidad → formulario → confirmación → filas persistidas) instalá Chromium una vez, iniciá Next local y ejecutá la prueba:
+
+```powershell
+pnpm exec playwright install chromium
+pnpm dev --hostname 127.0.0.1 --port 3000
+```
+
+En otra terminal:
+
+```powershell
+$env:SALON_RUN_DB_TESTS = "1"
+pnpm test:e2e:public
+```
+
+La prueba usa una fixture aleatoria, verifica el turno, la seña, el detalle histórico y la confirmación en PostgreSQL, y limpia sus datos incluso si falla.
+
+La prueba dinámica HTTP de roles requiere iniciar el servidor local de E2E y ejecutar:
+
+```powershell
+$env:SALON_RUN_DB_TESTS = "1"
+pnpm test:e2e:roles
+```
+
+Verifica el acceso de admin, recepción y profesional. Para reiniciar el servidor durante una prueba de persistencia, detené únicamente el PID que escucha en el puerto local de E2E y volvé a iniciarlo. No uses estas pruebas sobre una base compartida o de producción.
+
+Las fixtures para comprobar manualmente el flujo público de reservas pueden prepararse y limpiarse así:
+
+```powershell
+$env:SALON_RUN_DB_TESTS = "1"
+pnpm e2e:fixtures setup
+# Usá el runId informado para reservar desde /reservar en el servidor local.
+pnpm e2e:fixtures cleanup <runId>
+Remove-Item Env:SALON_RUN_DB_TESTS
+```
+
+La limpieza debe ejecutarse incluso si se interrumpe la prueba. No uses estas fixtures en una base compartida o de producción.
+
+### 7. Acceso del equipo
+
+El alta pública de cuentas está protegida: provisiona la primera cuenta administradora con `SALON_SETUP_TOKEN`. Después, una cuenta administradora puede generar enlaces de invitación de un solo uso desde `/equipo`; cada invitación vence en 24 horas y se restringe al correo indicado. Configura `NEXT_PUBLIC_APP_URL` con el origen público de la aplicación para que los enlaces generados sean correctos.
+
+En **Usuarios y equipo**, administración puede invitar con cualquiera de los roles, editar nombre/rol y bloquear o reactivar cuentas. Un bloqueo impide iniciar sesión, revoca las sesiones existentes y es reversible; no elimina la cuenta ni su historial. No se permite bloquear la propia cuenta ni quitar el rol al último administrador activo. Los cambios de rol también revocan las sesiones para que los nuevos permisos se apliquen al volver a ingresar.
+
+Administración conserva acceso total; recepción puede gestionar agenda, clientas y pagos. Las cuentas con rol **Profesional** no tienen acceso al panel actual hasta que exista una vista restringida. Las Server Actions vuelven a verificar que la cuenta esté activa y tenga el rol permitido; ocultar secciones en la interfaz no sustituye ese control.
+
+La agenda actualmente interpreta las horas del salón en la zona `America/Argentina/Buenos_Aires`, que también es el valor predeterminado de `salon_setting.timeZone`. Cambiar ese valor en la base no cambia todavía los cálculos de disponibilidad.
 
 ---
 
@@ -228,7 +284,7 @@ O visita en tu navegador: [http://localhost:3000/api/tests](http://localhost:300
 │   │   └── dashboard.ts     # Server Actions para turnos, pagos e inventario
 │   ├── api/
 │   │   ├── auth/[...all]/   # Endpoint de Better Auth
-│   │   └── tests/           # Endpoint ejecutable de los 15 escenarios obligatorios
+│   ├── equipo/              # Administración de usuarios, roles e invitaciones
 │   ├── reservar/
 │   │   └── page.tsx         # Página del portal público de reservas online
 │   ├── sign-in/ & sign-up/  # Vistas de autenticación
@@ -243,7 +299,7 @@ O visita en tu navegador: [http://localhost:3000/api/tests](http://localhost:300
 ├── drizzle.config.ts        # Configuración de Drizzle Kit
 ├── lib/
 │   ├── business-logic.ts    # Motor de reglas de negocio, duraciones, colisiones y señas
-│   ├── test-runner.ts       # Suite de validación de los 15 escenarios
+│   ├── business-logic.test.ts # Pruebas unitarias de reglas de negocio puras
 │   ├── offline-sync.ts      # Manejador de sincronización y cola IndexedDB
 │   ├── auth.ts & auth-client.ts # Configuración de Better Auth
 │   └── db/

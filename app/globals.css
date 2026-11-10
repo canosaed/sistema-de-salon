@@ -1877,6 +1877,15 @@ button, input, select { font: inherit; }
   border-bottom: 1px solid #f2ded9;
 }
 
+.main-viewport {
+  min-width: 0;
+}
+
+.table-responsive {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* Reservas (Listado Integral) Filters and Actions */
 .reservas-filters-bar {
   display: flex;
@@ -2806,6 +2815,81 @@ button, input, select { font: inherit; }
   font-size: 0.7rem;
   text-align: center;
   line-height: 1.15;
+}
+
+@media (max-width: 640px) {
+  .dashboard-container {
+    width: 100%;
+    overflow-x: hidden;
+    flex-direction: column;
+  }
+
+  .dashboard-container > .sidebar {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    border-right: 0;
+    border-bottom: 1px solid #ebd8d3;
+  }
+
+  .dashboard-container .brand-block,
+  .dashboard-container .sidebar-footer {
+    display: none;
+  }
+
+  .dashboard-container .nav-menu {
+    flex-direction: row;
+    gap: 0.25rem;
+    overflow-x: auto;
+  }
+
+  .dashboard-container .nav-link {
+    flex: 0 0 auto;
+    padding: 0.55rem 0.65rem;
+    white-space: nowrap;
+  }
+
+  .dashboard-container > .main-viewport {
+    width: 100%;
+  }
+
+  .dashboard-container .topbar-header {
+    min-width: 0;
+    gap: 0.5rem;
+    padding: 0 1rem;
+  }
+
+  .dashboard-container .topbar-title {
+    min-width: 0;
+  }
+
+  .dashboard-container .topbar-title p {
+    display: none;
+  }
+
+  .dashboard-container .topbar-actions .primary-button-accent {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .dashboard-container .tab-content {
+    min-width: 0;
+    padding: 1rem 0.75rem;
+  }
+
+  .dashboard-container .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .dashboard-container .dashboard-double-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-container .panel-card {
+    min-width: 0;
+    padding: 1rem;
+  }
 }
 
 .sched-badge-active {

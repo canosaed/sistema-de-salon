@@ -18,6 +18,7 @@ import {
   Check,
 } from 'lucide-react'
 import { checkPublicAvailability, createPublicBooking } from '@/app/actions/booking'
+import { getSalonDateString } from '@/lib/salon-time'
 
 interface PublicBookingProps {
   initialCatalog: {
@@ -59,8 +60,8 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('any')
 
   // Fecha y slots
-  const today = new Date()
-  const todayStr = getLocalDateString(today)
+  const todayStr = getSalonDateString()
+  const today = parseLocalDate(todayStr)
   const [selectedDate, setSelectedDate] = useState<string>(todayStr)
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => parseLocalDate(todayStr))
   const [selectedTime, setSelectedTime] = useState<string>('')
@@ -490,6 +491,7 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
                       <button
                         key={`${cd.dateStr}-${idx}`}
                         type="button"
+                        data-date={cd.dateStr}
                         disabled={!isClickable}
                         className={`datepicker-day-cell ${
                           !cd.isCurrentMonth ? 'other-month' : ''

@@ -1,11 +1,9 @@
 'use server'
 
 import { eq } from 'drizzle-orm'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { professionalSchedules, professionals } from '@/lib/db/schema'
-import { salonRepo } from '@/lib/db/salon-repository'
+import { adminRoles, panelRoles, requireSalonRole } from '@/lib/staff-auth'
 
 export interface ProfessionalInput {
   name: string
@@ -16,18 +14,13 @@ export interface ProfessionalInput {
   serviceIds?: string[]
 }
 
-async function requireUser() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) throw new Error('Unauthorized')
-}
-
 export async function getProfessionals() {
-  const rows = await db.select().from(professionals).where(eq(professionals.isActive, true))
-  return rows.length ? rows : salonRepo.getProfessionals()
+  await requireSalonRole(panelRoles)
+  return db.select().from(professionals).where(eq(professionals.isActive, true))
 }
 
 export async function createProfessional(input: ProfessionalInput) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   if (!input.name?.trim()) throw new Error('El nombre de la profesional es obligatorio.')
   if (!input.phone?.trim()) throw new Error('El teléfono de contacto es obligatorio.')
 
@@ -44,7 +37,7 @@ export async function createProfessional(input: ProfessionalInput) {
 }
 
 export async function updateProfessional(id: string, input: Partial<ProfessionalInput>) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   if (!id) throw new Error('ID de profesional no provisto.')
   const [professional] = await db.update(professionals).set({
     ...(input.name !== undefined && { name: input.name.trim() }),
@@ -58,14 +51,14 @@ export async function updateProfessional(id: string, input: Partial<Professional
 }
 
 export async function deleteProfessional(id: string) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   if (!id) throw new Error('ID de profesional no provisto.')
   const [professional] = await db.update(professionals).set({ isActive: false, updatedAt: new Date() }).where(eq(professionals.id, id)).returning()
   return professional
 }
 
 export async function saveScheduleAction(formData: FormData) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   const id = formData.get('id') as string | null
   const professionalId = formData.get('professionalId') as string
   const dayOfWeek = Number(formData.get('dayOfWeek'))
@@ -86,7 +79,7 @@ export async function saveScheduleAction(formData: FormData) {
 }
 
 export async function toggleScheduleAction(id: string) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   const [schedule] = await db.select().from(professionalSchedules).where(eq(professionalSchedules.id, id)).limit(1)
   if (!schedule) throw new Error('Horario no encontrado.')
   const [updated] = await db.update(professionalSchedules).set({ isActive: !schedule.isActive }).where(eq(professionalSchedules.id, id)).returning()
@@ -94,7 +87,7 @@ export async function toggleScheduleAction(id: string) {
 }
 
 export async function deleteScheduleAction(id: string) {
-  await requireUser()
+  await requireSalonRole(adminRoles)
   const [deleted] = await db.delete(professionalSchedules).where(eq(professionalSchedules.id, id)).returning()
   return deleted
 }

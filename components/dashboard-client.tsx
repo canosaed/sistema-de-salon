@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { Fragment, useState, useTransition, useMemo } from 'react'
 import {
   CalendarDays,
   Clock3,
@@ -56,6 +56,7 @@ import {
 } from '@/app/actions/professionals'
 import { createMaterialAction, updateMaterialAction, deleteMaterialAction } from '@/app/actions/inventory'
 import { updateSalonSettingsAction } from '@/app/actions/settings'
+import { getSalonDateString } from '@/lib/salon-time'
 
 interface DashboardProps {
   initialData: {
@@ -69,11 +70,13 @@ interface DashboardProps {
     payments: any[]
     inventoryMovements: any[]
     settings: any
+    role: 'admin' | 'receptionist'
     schedules?: any[]
   }
 }
 
 export default function DashboardClient({ initialData }: DashboardProps) {
+  const isAdmin = initialData.role === 'admin'
   // Pestaña activa
   const [activeTab, setActiveTab] = useState<
     'Resumen' | 'Agenda' | 'Reservas' | 'Clientes' | 'Servicios' | 'Profesionales' | 'Pagos' | 'Inventario' | 'Reportes' | 'Configuración'
@@ -95,7 +98,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
 
   // Filtros de Agenda
   const [agendaView, setAgendaView] = useState<'day' | 'week' | 'month'>('week')
-  const [agendaAnchorDate, setAgendaAnchorDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [agendaAnchorDate, setAgendaAnchorDate] = useState<string>(getSalonDateString())
   const [selectedProfessionalFilter, setSelectedProfessionalFilter] = useState('all')
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
@@ -108,7 +111,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
 
   // Búsqueda de Clientes
   const [clientSearchQuery, setClientSearchQuery] = useState('')
-  const [selectedClientDetail, setSelectedClientDetail] = useState<any>(null)
+  const [selectedClientDetail, setSelectedClientDetail] = useState<string | null>(null)
 
   // Modales
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false)
@@ -182,7 +185,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [formServiceId, setFormServiceId] = useState(initialData.services[0]?.id || '')
   const [formTechniqueId, setFormTechniqueId] = useState('')
   const [formProId, setFormProId] = useState(initialData.professionals[0]?.id || '')
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
+  const [formDate, setFormDate] = useState(getSalonDateString())
   const [formTime, setFormTime] = useState('11:00')
   const [formNotes, setFormNotes] = useState('')
   const [formDepositAmount, setFormDepositAmount] = useState('0')
@@ -198,7 +201,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [paymentNotes, setPaymentNotes] = useState('')
 
   // Formulario Reprogramación
-  const [rescheduleDate, setRescheduleDate] = useState(new Date().toISOString().split('T')[0])
+  const [rescheduleDate, setRescheduleDate] = useState(getSalonDateString())
   const [rescheduleTime, setRescheduleTime] = useState('14:00')
 
   // Formulario Cancelación
@@ -213,9 +216,12 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   // --------------------------------------------------------------------------
   // CÁLCULOS Y ESTADÍSTICAS DEL DASHBOARD
   // --------------------------------------------------------------------------
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getSalonDateString()
   const todayAppointments = appointments.filter((a) => a.date === todayStr && a.status !== 'cancelled')
   const pendingAppointments = appointments.filter((a) => a.status === 'pending_confirmation')
+  const filteredClients = clients.filter((client) =>
+    `${client.name} ${client.phone}`.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  )
   const totalMonthRevenue = payments
     .filter((p) => p.type !== 'refund')
     .reduce((acc, curr) => acc + Number(curr.amount), 0)
@@ -511,7 +517,9 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     startTransition(async () => {
       try {
         const updated = await rescheduleAppointmentAction(showRescheduleModal.id, rescheduleDate, rescheduleTime)
-        setAppointments((prev) => prev.map((a) => (a.id === showRescheduleModal.id ? updated : a)))
+        setAppointments((prev) => prev.map((a) => (
+          a.id === showRescheduleModal.id ? { ...a, ...updated } : a
+        )))
         setShowRescheduleModal(null)
       } catch (err: any) {
         alert(err.message)
@@ -704,7 +712,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             { id: 'Inventario', label: 'Inventario', icon: Package },
             { id: 'Reportes', label: 'Reportes', icon: Layers },
             { id: 'Configuración', label: 'Configuración', icon: Settings },
-          ].map(({ id, label, icon: Icon }) => (
+          ].filter(({ id }) => isAdmin || ['Resumen', 'Agenda', 'Reservas', 'Clientes', 'Pagos'].includes(id)).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               className={`nav-link ${activeTab === id ? 'active' : ''}`}
@@ -720,6 +728,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         </nav>
 
         <div className="sidebar-footer">
+          {isAdmin && <a href="/equipo" className="nav-link">
+            <Users size={18} />
+            <span>Usuarios y equipo</span>
+          </a>}
           <a href="/reservar" target="_blank" className="public-booking-btn">
             <Sparkles size={16} /> Portal Público Online
           </a>
@@ -1377,50 +1389,114 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       <th>Teléfono</th>
                       <th>Email</th>
                       <th>Visitas</th>
+                      <th>Historial</th>
                       <th>Observaciones</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {clients
-                      .filter((c) =>
-                        `${c.name} ${c.phone}`.toLowerCase().includes(clientSearchQuery.toLowerCase())
-                      )
-                      .map((c) => (
-                        <tr key={c.id}>
-                          <td><b>{c.name}</b></td>
-                          <td>{c.phone}</td>
-                          <td>{c.email || '—'}</td>
-                          <td><span className="visits-badge">{c.visits} turnos</span></td>
-                          <td>{c.notes || '—'}</td>
-                          <td>
-                            <div className="table-actions-cluster">
-                              <button
-                                className="btn-sm"
-                                onClick={() => {
-                                  setClientForm({
-                                    id: c.id,
-                                    name: c.name,
-                                    phone: c.phone,
-                                    email: c.email || '',
-                                    notes: c.notes || '',
-                                  })
-                                  setShowClientModal(true)
-                                }}
-                              >
-                                Editar
-                              </button>
-                              <button
-                                className="btn-sm btn-cancel"
-                                onClick={() => handleDeleteClient(c.id, c.name)}
-                                title="Eliminar clienta"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                    {filteredClients.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="empty-state">No se encontraron clientas.</td>
+                      </tr>
+                    ) : filteredClients.map((c) => {
+                        const clientAppointments = appointments
+                          .filter((appointment) => appointment.clientId === c.id)
+                          .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+                        const isHistoryOpen = selectedClientDetail === c.id
+
+                        return (
+                          <Fragment key={c.id}>
+                            <tr key={c.id}>
+                              <td><b>{c.name}</b></td>
+                              <td>{c.phone}</td>
+                              <td>{c.email || '—'}</td>
+                              <td><span className="visits-badge">{c.visits} turnos</span></td>
+                              <td>
+                                <button
+                                  className="btn-sm"
+                                  onClick={() => setSelectedClientDetail(isHistoryOpen ? null : c.id)}
+                                  aria-expanded={isHistoryOpen}
+                                >
+                                  {isHistoryOpen ? 'Cerrar' : `Ver (${clientAppointments.length})`}
+                                </button>
+                              </td>
+                              <td>{c.notes || '—'}</td>
+                              <td>
+                                <div className="table-actions-cluster">
+                                  <button
+                                    className="btn-sm"
+                                    onClick={() => {
+                                      setClientForm({
+                                        id: c.id,
+                                        name: c.name,
+                                        phone: c.phone,
+                                        email: c.email || '',
+                                        notes: c.notes || '',
+                                      })
+                                      setShowClientModal(true)
+                                    }}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    className="btn-sm btn-cancel"
+                                    onClick={() => handleDeleteClient(c.id, c.name)}
+                                    title="Eliminar clienta"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {isHistoryOpen && (
+                              <tr key={`${c.id}-history`}>
+                                <td colSpan={7}>
+                                  {clientAppointments.length === 0 ? (
+                                    <p className="empty-state">Todavía no hay turnos registrados para esta clienta.</p>
+                                  ) : (
+                                    <div className="table-responsive">
+                                      <table className="custom-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Fecha y hora</th>
+                                            <th>Servicio</th>
+                                            <th>Profesional</th>
+                                            <th>Estado</th>
+                                            <th>Importe</th>
+                                            <th>Actividad</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {clientAppointments.map((appointment) => (
+                                            <tr key={appointment.id}>
+                                              <td>{appointment.date} {appointment.time}</td>
+                                              <td>{appointment.serviceName}</td>
+                                              <td>{appointment.professionalName}</td>
+                                              <td>{appointment.status}</td>
+                                              <td>${Number(appointment.totalPrice).toLocaleString('es-AR')}</td>
+                                              <td>
+                                                {appointment.history?.length
+                                                  ? appointment.history.map((entry: { action: string; details: string; createdAt: string }, index: number) => (
+                                                    <div key={`${appointment.id}-event-${index}`}>
+                                                      {new Date(entry.createdAt).toLocaleString('es-AR')} — {entry.action}
+                                                      {entry.details ? `: ${entry.details}` : ''}
+                                                    </div>
+                                                  ))
+                                                  : 'Sin eventos registrados'}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -1431,7 +1507,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {/* 5. SERVICIOS (ABM / CRUD) */}
         {/* ------------------------------------------------------------------ */}
-        {activeTab === 'Servicios' && (
+        {isAdmin && activeTab === 'Servicios' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
@@ -1527,7 +1603,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {/* 6. PROFESIONALES (ABM / CRUD) */}
         {/* ------------------------------------------------------------------ */}
-        {activeTab === 'Profesionales' && (
+        {isAdmin && activeTab === 'Profesionales' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
@@ -1692,7 +1768,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {/* 8. INVENTARIO */}
         {/* ------------------------------------------------------------------ */}
-        {activeTab === 'Inventario' && (
+        {isAdmin && activeTab === 'Inventario' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
@@ -1813,7 +1889,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {/* 9. REPORTES */}
         {/* ------------------------------------------------------------------ */}
-        {activeTab === 'Reportes' && (
+        {isAdmin && activeTab === 'Reportes' && (
           <div className="tab-content">
             <div className="panel-card">
               <div className="panel-card-head">
@@ -1845,7 +1921,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         {/* ------------------------------------------------------------------ */}
         {/* 10. CONFIGURACIÓN */}
         {/* ------------------------------------------------------------------ */}
-        {activeTab === 'Configuración' && (
+        {isAdmin && activeTab === 'Configuración' && (
           <div className="tab-content">
             <div className="panel-card config-panel-card">
               <div className="panel-card-head">
