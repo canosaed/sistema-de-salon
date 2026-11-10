@@ -4,21 +4,48 @@ import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { appointmentHistory, appointments, clients, inventoryMovements, materials, payments, professionalSchedules, professionals, salonSettings, serviceCategories, services, techniques } from '@/lib/db/schema'
+import {
+  appointmentHistory,
+  appointments,
+  clients,
+  inventoryMovements,
+  materials,
+  payments,
+  professionalSchedules,
+  professionals,
+  salonSettings,
+  serviceCategories,
+  services,
+  techniques,
+} from '@/lib/db/schema'
 import { salonRepo } from '@/lib/db/salon-repository'
 import { registerStockMovementAction } from '@/app/actions/inventory'
 
 export async function getDashboardData() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [persistedAppointments, persistedCategories, persistedPayments, persistedServices, persistedProfessionals, persistedMaterials, persistedMovements, persistedSchedules, persistedSettings, persistedClients, persistedTechniques] = await Promise.all([
-    db.select({ appointment: appointments, client: clients, professional: professionals })
+  const [
+    persistedAppointments,
+    persistedCategories,
+    persistedPayments,
+    persistedServices,
+    persistedProfessionals,
+    persistedMaterials,
+    persistedMovements,
+    persistedSchedules,
+    persistedSettings,
+    persistedClients,
+    persistedTechniques,
+  ] = await Promise.all([
+    db
+      .select({ appointment: appointments, client: clients, professional: professionals })
       .from(appointments)
       .innerJoin(clients, eq(appointments.clientId, clients.id))
       .innerJoin(professionals, eq(appointments.professionalId, professionals.id))
       .where(eq(clients.userId, session.user.id)),
     db.select().from(serviceCategories),
-    db.select({ payment: payments, appointment: appointments, client: clients })
+    db
+      .select({ payment: payments, appointment: appointments, client: clients })
       .from(payments)
       .innerJoin(appointments, eq(payments.appointmentId, appointments.id))
       .innerJoin(clients, eq(appointments.clientId, clients.id))
@@ -32,6 +59,7 @@ export async function getDashboardData() {
     db.select().from(salonSettings).limit(1),
     db.select().from(clients).where(eq(clients.userId, session.user.id)),
   ])
+
   const dashboardPayments = persistedPayments.map(({ payment, client }) => ({
     id: payment.id,
     appointmentId: payment.appointmentId,
@@ -44,9 +72,13 @@ export async function getDashboardData() {
     createdAt: payment.createdAt.toISOString(),
   }))
 
+  const persistedIds = new Set(persistedAppointments.map((p) => p.appointment.id))
+  const memoryAppointments = salonRepo
+    .getAppointments()
+    .filter((a) => !persistedIds.has(a.id))
 
   const dashboardAppointments = [
-    ...salonRepo.getAppointments(),
+    ...memoryAppointments,
     ...persistedAppointments.map(({ appointment, client, professional }) => ({
       id: appointment.id,
       clientId: appointment.clientId,
@@ -60,7 +92,7 @@ export async function getDashboardData() {
       status: appointment.status,
       paymentStatus: appointment.paymentStatus,
       isPublicBooking: appointment.isPublicBooking,
-      notes: appointment.notes || 'Reserva online',
+      notes: appointment.notes || '',
       totalDurationMinutes: appointment.totalDurationMinutes,
       totalPrice: Number(appointment.totalPrice),
       requiredDeposit: Number(appointment.requiredDeposit),
@@ -96,6 +128,10 @@ export async function createInternalAppointment(input: {
   initialDepositAmount?: number
   paymentMethod?: 'cash' | 'transfer' | 'card' | 'other'
 }) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+
+  // 1. Crear y sincronizar en el motor de negocio
   const appointment = salonRepo.createAppointment({
     clientId: input.clientId,
     clientName: input.clientName,
@@ -109,13 +145,67 @@ export async function createInternalAppointment(input: {
     isPublicBooking: false,
   })
 
-  // Si se registró una seña en el mismo acto de reserva interna:
+  // 2. Persistir en PostgreSQL directamente
+  const startDateTime = new Date(`${input.date}T${input.time}:00`)
+  const endDateTime = new Date(startDateTime.getTime() + appointment.totalDurationMinutes * 60_000)
+
+  // Asegurar que el cliente exista en PostgreSQL
+  const cleanPhone = input.clientPhone.trim()
+  const existingClients = await db.select().from(clients).where(eq(clients.phone, cleanPhone)).limit(1)
+  let dbClientId = existingClients[0]?.id
+  if (!dbClientId) {
+    dbClientId = appointment.clientId || crypto.randomUUID()
+    await db.insert(clients).values({
+      id: dbClientId,
+      userId: session.user.id,
+      name: input.clientName.trim(),
+      phone: cleanPhone,
+      notes: input.notes?.trim() || null,
+      visits: 1,
+    })
+  }
+
+  await db.insert(appointments).values({
+    id: appointment.id,
+    clientId: dbClientId,
+    professionalId: input.professionalId,
+    startDateTime,
+    endDateTime,
+    totalDurationMinutes: appointment.totalDurationMinutes,
+    totalPrice: String(appointment.totalPrice),
+    requiredDeposit: String(appointment.requiredDeposit),
+    status: 'confirmed',
+    paymentStatus: input.initialDepositAmount && input.initialDepositAmount > 0 ? 'deposit_paid' : 'pending',
+    notes: input.notes || 'Turno interno',
+    isPublicBooking: false,
+  })
+
+  // Historial de auditoría
+  await db.insert(appointmentHistory).values({
+    id: crypto.randomUUID(),
+    appointmentId: appointment.id,
+    action: 'created_internal',
+    actorUserId: session.user.id,
+    details: `Turno agendado en recepción para ${input.clientName}`,
+  })
+
+  // 3. Si se registró una seña en el mismo acto de reserva interna:
   if (input.initialDepositAmount && input.initialDepositAmount > 0) {
-    salonRepo.registerPayment({
+    const paymentRecord = salonRepo.registerPayment({
       appointmentId: appointment.id,
       amount: input.initialDepositAmount,
       method: input.paymentMethod || 'cash',
       type: 'deposit',
+      notes: 'Seña inicial al crear turno interno',
+    })
+
+    await db.insert(payments).values({
+      id: paymentRecord.payment.id,
+      appointmentId: appointment.id,
+      amount: String(input.initialDepositAmount),
+      method: input.paymentMethod || 'cash',
+      type: 'deposit',
+      status: 'completed',
       notes: 'Seña inicial al crear turno interno',
     })
   }
@@ -130,10 +220,34 @@ export async function updateAppointmentStatusAction(
 ) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [appointment] = await db.update(appointments).set({ status, updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
-  if (!appointment) return salonRepo.updateAppointmentStatus(appointmentId, status, reason)
-  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: `status:${status}`, actorUserId: session.user.id, details: reason || null, snapshot: appointment })
-  return appointment
+
+  // Actualizar en PostgreSQL
+  const [appointment] = await db
+    .update(appointments)
+    .set({ status, updatedAt: new Date(), ...(reason && { cancellationReason: reason }) })
+    .where(eq(appointments.id, appointmentId))
+    .returning()
+
+  // Sincronizar también con la capa en memoria / motor de negocio
+  try {
+    salonRepo.updateAppointmentStatus(appointmentId, status, reason)
+  } catch {
+    // Si no estaba en memoria, continúa con el persistido
+  }
+
+  if (appointment) {
+    await db.insert(appointmentHistory).values({
+      id: crypto.randomUUID(),
+      appointmentId,
+      action: `status:${status}`,
+      actorUserId: session.user.id,
+      details: reason || null,
+      snapshot: appointment,
+    })
+    return appointment
+  }
+
+  return salonRepo.updateAppointmentStatus(appointmentId, status, reason)
 }
 
 export async function rescheduleAppointmentAction(
@@ -143,23 +257,81 @@ export async function rescheduleAppointmentAction(
 ) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
+
   const [existing] = await db.select().from(appointments).where(eq(appointments.id, appointmentId)).limit(1)
-  if (!existing?.startDateTime || !existing.endDateTime) return salonRepo.rescheduleAppointment(appointmentId, newDate, newTime)
+
+  // Sincronizar repositorio en memoria si existe allí
+  let repoApt: any = null
+  try {
+    repoApt = salonRepo.rescheduleAppointment(appointmentId, newDate, newTime)
+  } catch {
+    // no-op si era únicamente persistido
+  }
+
+  if (!existing?.startDateTime || !existing.endDateTime) {
+    return repoApt
+  }
+
   const duration = existing.endDateTime.getTime() - existing.startDateTime.getTime()
   const startDateTime = new Date(`${newDate}T${newTime}:00`)
   const endDateTime = new Date(startDateTime.getTime() + duration)
-  const [updated] = await db.update(appointments).set({ startDateTime, endDateTime, updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
-  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: 'rescheduled', actorUserId: session.user.id, details: `${newDate} ${newTime}`, snapshot: updated })
-  return updated
+
+  const [updated] = await db
+    .update(appointments)
+    .set({ startDateTime, endDateTime, updatedAt: new Date() })
+    .where(eq(appointments.id, appointmentId))
+    .returning()
+
+  await db.insert(appointmentHistory).values({
+    id: crypto.randomUUID(),
+    appointmentId,
+    action: 'rescheduled',
+    actorUserId: session.user.id,
+    details: `${newDate} ${newTime}`,
+    snapshot: updated,
+  })
+
+  return {
+    ...updated,
+    date: newDate,
+    time: newTime,
+    startMinutes: (startDateTime.getHours() * 60) + startDateTime.getMinutes(),
+    endMinutes: (endDateTime.getHours() * 60) + endDateTime.getMinutes(),
+    totalDurationMinutes: Math.round(duration / 60000),
+    totalPrice: Number(updated.totalPrice),
+    requiredDeposit: Number(updated.requiredDeposit),
+  }
 }
 
 export async function deleteAppointmentAction(appointmentId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
-  const [updated] = await db.update(appointments).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(appointments.id, appointmentId)).returning()
-  if (!updated) return salonRepo.deleteAppointment(appointmentId)
-  await db.insert(appointmentHistory).values({ id: crypto.randomUUID(), appointmentId, action: 'cancelled', actorUserId: session.user.id, snapshot: updated })
-  return updated
+
+  // Cancelación / Baja lógica en DB
+  const [updated] = await db
+    .update(appointments)
+    .set({ status: 'cancelled', updatedAt: new Date() })
+    .where(eq(appointments.id, appointmentId))
+    .returning()
+
+  try {
+    salonRepo.deleteAppointment(appointmentId)
+  } catch {
+    // no-op
+  }
+
+  if (updated) {
+    await db.insert(appointmentHistory).values({
+      id: crypto.randomUUID(),
+      appointmentId,
+      action: 'cancelled',
+      actorUserId: session.user.id,
+      snapshot: updated,
+    })
+    return updated
+  }
+
+  return salonRepo.deleteAppointment(appointmentId)
 }
 
 export async function registerAppointmentPaymentAction(input: {
@@ -172,9 +344,60 @@ export async function registerAppointmentPaymentAction(input: {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error('El importe debe ser mayor a 0.')
-  const [payment] = await db.insert(payments).values({ id: crypto.randomUUID(), appointmentId: input.appointmentId, amount: String(input.amount), method: input.method, type: input.type, status: 'completed', notes: input.notes?.trim() || null }).returning()
-  await db.update(appointments).set({ paymentStatus: input.type === 'full' ? 'paid' : 'partial', updatedAt: new Date() }).where(eq(appointments.id, input.appointmentId))
-  return { payment: { ...payment, amount: Number(payment.amount), clientName: '', createdAt: payment.createdAt.toISOString() }, balance: { paymentStatus: input.type === 'full' ? 'paid' : 'partial' } }
+
+  const [payment] = await db
+    .insert(payments)
+    .values({
+      id: crypto.randomUUID(),
+      appointmentId: input.appointmentId,
+      amount: String(input.amount),
+      method: input.method,
+      type: input.type,
+      status: 'completed',
+      notes: input.notes?.trim() || null,
+    })
+    .returning()
+
+  // Recalcular saldo total sumando todos los pagos del turno en la base de datos
+  const allPayments = await db.select().from(payments).where(eq(payments.appointmentId, input.appointmentId))
+  const [targetAppointment] = await db.select().from(appointments).where(eq(appointments.id, input.appointmentId)).limit(1)
+
+  let paymentStatus: 'pending' | 'deposit_paid' | 'partially_paid' | 'paid' | 'refunded' = 'pending'
+  if (targetAppointment) {
+    const totalPrice = Number(targetAppointment.totalPrice)
+    let totalPaid = 0
+    for (const p of allPayments) {
+      const amt = Number(p.amount)
+      if (p.type === 'refund') totalPaid -= amt
+      else totalPaid += amt
+    }
+
+    if (totalPaid <= 0 && allPayments.some((p) => p.type === 'refund')) paymentStatus = 'refunded'
+    else if (totalPaid >= totalPrice && totalPrice > 0) paymentStatus = 'paid'
+    else if (totalPaid > 0 && totalPaid < totalPrice) {
+      const hasDeposit = allPayments.some((p) => p.type === 'deposit')
+      paymentStatus = hasDeposit ? 'deposit_paid' : 'partially_paid'
+    }
+
+    await db.update(appointments).set({ paymentStatus, updatedAt: new Date() }).where(eq(appointments.id, input.appointmentId))
+  }
+
+  // Sincronizar en repositorio de memoria
+  try {
+    salonRepo.registerPayment(input)
+  } catch {
+    // no-op
+  }
+
+  return {
+    payment: {
+      ...payment,
+      amount: Number(payment.amount),
+      clientName: '',
+      createdAt: payment.createdAt.toISOString(),
+    },
+    balance: { paymentStatus },
+  }
 }
 
 export async function recordMaterialConsumptionAction(input: {
