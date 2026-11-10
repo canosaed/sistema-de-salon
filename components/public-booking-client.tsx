@@ -309,7 +309,9 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
       {errorMsg && (
         <div className="booking-error-banner" role="alert">
           <AlertCircle size={18} aria-hidden="true" />
-          <span>{errorMsg}</span>
+           <span>{/*{errorMsg} */}
+            {errorMsg && <p role="status" className="rounded-xl border border-[#dedbd3] bg-[#fffdf9] px-4 py-3 text-sm text-[#5f5a52] panel-card-head mt-2 btn-cancel">{errorMsg}</p>}
+          </span>
         </div>
       )}
 

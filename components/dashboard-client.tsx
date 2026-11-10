@@ -2178,7 +2178,9 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     ))}
                   </select>
                 </label>
+              {/* </div>
 
+              <div className="input-row"> */}
                 <label className="field-group">
                   <span className="field-label">Profesional Responsable</span>
                   <select
