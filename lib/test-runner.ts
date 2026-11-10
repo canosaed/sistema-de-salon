@@ -31,7 +31,7 @@ export function runObligatoryScenariosTests() {
       clientName: 'Lucía Test',
       clientPhone: '11 5555 9901',
       serviceIds: ['srv-esmaltado-semi'],
-      date: '2026-11-10',
+      date: '2026-11-15',
       time: '09:00',
       isPublicBooking: true,
     })
@@ -47,7 +47,7 @@ export function runObligatoryScenariosTests() {
       clientPhone: '11 5555 9902',
       serviceIds: ['srv-soft-gel'],
       professionalId: 'pro-valentina',
-      date: '2026-11-10',
+      date: '2026-11-15',
       time: '11:00',
       isPublicBooking: false,
     })
