@@ -40,19 +40,21 @@ export async function checkPublicAvailability(params: {
     ? professionalRows.map((professional) => ({ ...professional, specialties: Array.isArray(professional.specialties) ? professional.specialties : professional.specialties ? professional.specialties.split(',').map((item) => item.trim()) : [] }))
     : salonRepo.getProfessionals()
   const selectedProfessional = professionals.find((pro) => pro.id === params.professionalId)
-  const booked = await db.select({ startDateTime: appointments.startDateTime, professionalId: appointments.professionalId })
+  const booked = await db.select({ startDateTime: appointments.startDateTime, endDateTime: appointments.endDateTime, professionalId: appointments.professionalId })
     .from(appointments)
-    .where(sql`${appointments.status} IN ('pending_confirmation', 'confirmed', 'in_progress')`)
-  const bookedTimes = new Set(booked
-    .filter((appointment) => appointment.startDateTime?.toISOString().startsWith(params.dateStr))
-    .map((appointment) => `${appointment.startDateTime?.toISOString().slice(11, 16)}|${appointment.professionalId}`))
+    .where(sql`${appointments.status} IN ('pending_confirmation', 'confirmed', 'waiting', 'in_progress')`)
+  const bookedIntervals = booked.filter((appointment) => appointment.startDateTime?.toISOString().startsWith(params.dateStr))
   const slots = availability.slots.filter((slot) => {
     const availableProfessionalIds = params.professionalId && params.professionalId !== 'any'
       ? [params.professionalId]
       : slot.availableProfessionalIds
     return availableProfessionalIds.some((professionalId) => {
       const professional = professionals.find((pro) => pro.id === professionalId)
-      return professional && !bookedTimes.has(`${slot.time}|${professional.id}`)
+      if (!professional) return false
+      const slotStart = new Date(`${params.dateStr}T${slot.time}:00`)
+      const slotEnd = new Date(slotStart.getTime() + (availability.totalDurationMinutes || 30) * 60_000)
+      const overlaps = bookedIntervals.some((appointment) => appointment.professionalId === professional.id && appointment.startDateTime && appointment.endDateTime && slotStart < appointment.endDateTime && slotEnd > appointment.startDateTime)
+      return !overlaps
     })
   })
 
@@ -115,7 +117,7 @@ export async function createPublicBooking(data: {
   const endDateTime = new Date(startDateTime.getTime() + totalDurationMinutes * 60_000)
   const conflicting = (await db.select({ id: appointments.id, startDateTime: appointments.startDateTime, endDateTime: appointments.endDateTime })
     .from(appointments)
-    .where(and(eq(appointments.professionalId, assignedProfessional.id), eq(appointments.status, 'pending_confirmation'))))
+    .where(and(eq(appointments.professionalId, assignedProfessional.id), sql`${appointments.status} IN ('pending_confirmation', 'confirmed', 'waiting', 'in_progress')`)))
     .find((existing) => existing.startDateTime && existing.endDateTime && startDateTime < existing.endDateTime && endDateTime > existing.startDateTime)
   if (conflicting) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
 
