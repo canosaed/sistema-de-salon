@@ -104,6 +104,23 @@ WHERE nullif(trim(a.service), '') IS NOT NULL
 GROUP BY lower(trim(a.service))
 ON CONFLICT (id) DO NOTHING;
 
+-- Completa categorías y valores del catálogo base cuando la migración legacy sólo creó servicios por nombre.
+INSERT INTO service_category (id, "userId", name, slug, description, "order")
+SELECT category.id, owners."userId", category.name, category.slug, category.description, category."order"
+FROM (VALUES
+  ('cat-manos', 'Manos', 'manos', 'Cuidado y belleza de manos y uñas', 1),
+  ('cat-pies', 'Pies', 'pies', 'Pedicuría tradicional, estética y combinada', 2),
+  ('cat-pestanas', 'Pestañas', 'pestanas', 'Lifting y extensiones de pestañas', 3)
+) AS category(id, name, slug, description, "order")
+CROSS JOIN LATERAL (SELECT "userId" FROM service LIMIT 1) owners
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE service
+SET "categoryId" = CASE name WHEN 'Soft gel' THEN 'cat-manos' WHEN 'Kapping acrílico / gel' THEN 'cat-manos' ELSE "categoryId" END,
+    price = CASE name WHEN 'Soft gel' THEN 27000 WHEN 'Kapping acrílico / gel' THEN 22000 ELSE price END,
+    "durationMinutes" = CASE name WHEN 'Soft gel' THEN 90 WHEN 'Kapping acrílico / gel' THEN 60 ELSE "durationMinutes" END
+WHERE name IN ('Soft gel', 'Kapping acrílico / gel');
+
 UPDATE appointment a
 SET "clientId" = COALESCE(a."clientId", c.id),
     "professionalId" = COALESCE(a."professionalId", p.id),
