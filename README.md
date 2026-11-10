@@ -62,7 +62,21 @@ cd <NOMBRE_DEL_DIRECTORIO>
 
 ### 2. Variables de Entorno
 
-Crear un archivo `.env` o `.env.local` en la raíz del proyecto basándose en las siguientes variables requeridas:
+Crear `.env` en la raíz del proyecto copiando `.env.ejemplo`, que contiene la configuración de desarrollo sin credenciales reales. Reemplazar `BETTER_AUTH_SECRET` y `SALON_SETUP_TOKEN` por secretos aleatorios propios antes de iniciar la aplicación.
+
+En Windows PowerShell:
+
+```powershell
+Copy-Item .env.ejemplo .env
+```
+
+En macOS/Linux:
+
+```bash
+cp .env.ejemplo .env
+```
+
+Mantener `.env` local y no subirlo al repositorio. `SALON_RUN_DB_TESTS` y `SALON_ALLOW_DEV_SEED` son autorizaciones temporales para pruebas y carga de datos de desarrollo; no deben quedar habilitadas permanentemente.
 
 ```env
 # URL base de la aplicación
@@ -70,7 +84,7 @@ BETTER_AUTH_URL=http://localhost:3000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Secreto para sesiones y tokens de Better Auth (mínimo 32 caracteres recomendados)
-BETTER_AUTH_SECRET=un_secreto_seguro_para_better_auth_1234567890
+BETTER_AUTH_SECRET=reemplazar_por_un_secreto_aleatorio_de_32_caracteres_o_mas
 
 # Token inicial de un solo uso para provisionar la primera cuenta administradora (mínimo 32 caracteres)
 SALON_SETUP_TOKEN=reemplazar_por_un_token_aleatorio_de_32_caracteres_o_mas

@@ -331,6 +331,18 @@
 			],
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Inspect env keys safely",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"exec",
+				"tsx",
+				"scripts/inspect-env.tmp.ts"
+			],
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	],
 	"inputs": [
