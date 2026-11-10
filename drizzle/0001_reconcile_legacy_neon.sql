@@ -121,6 +121,10 @@ SET "categoryId" = CASE name WHEN 'Soft gel' THEN 'cat-manos' WHEN 'Kapping acr�
     "durationMinutes" = CASE name WHEN 'Soft gel' THEN 90 WHEN 'Kapping acrílico / gel' THEN 60 ELSE "durationMinutes" END
 WHERE name IN ('Soft gel', 'Kapping acrílico / gel');
 
+INSERT INTO salon_setting (id, "salonName", "timeZone", currency, "minNoticeHoursForBooking", "minNoticeHoursForCancellation", "autoConfirmPublicBookings", "defaultDepositType", "defaultDepositPercentage", "defaultDepositFixed")
+VALUES ('salon-setting-1', 'Atelier Beauty Studio', 'America/Argentina/Buenos_Aires', 'ARS', 2, 24, false, 'percentage', 30, 5000)
+ON CONFLICT (id) DO NOTHING;
+
 -- Migra los horarios y asociaciones de la profesional que existe en el catálogo legacy.
 INSERT INTO professional_schedule (id, "professionalId", "dayOfWeek", "startTime", "endTime", "breakStartTime", "breakEndTime", "isActive")
 SELECT schedule.id, professional.id, schedule."dayOfWeek", schedule."startTime", schedule."endTime", schedule."breakStartTime", schedule."breakEndTime", schedule."isActive"
