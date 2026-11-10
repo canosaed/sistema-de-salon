@@ -819,8 +819,18 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           <span className="item-details">{apt.serviceName} · {apt.professional}</span>
                         </div>
                         <div className="agenda-item-status-group">
-                          <span className={`status-pill ${apt.status}`}>{apt.status}</span>
-                          <span className={`payment-pill ${apt.paymentStatus}`}>{apt.paymentStatus}</span>
+                          <span className={`status-pill ${apt.status}`}>
+                            {apt.status === 'confirmed' ? 'Confirmado' :
+                              apt.status === 'pending_confirmation' ? 'Pendiente' :
+                              apt.status === 'in_progress' ? 'En curso' :
+                              apt.status === 'completed' ? 'Finalizado' :
+                              apt.status === 'cancelled' ? 'Cancelado' : apt.status}
+                          </span>
+                          <span className={`payment-pill ${apt.paymentStatus}`}>
+                            {apt.paymentStatus === 'paid' ? 'Abonado' :
+                             apt.paymentStatus === 'deposit_paid' ? 'Señado' :
+                             apt.paymentStatus === 'refunded' ? 'Reembolsado' : 'Pendiente'}
+                          </span>
                         </div>
                         <button
                           className="action-btn"
@@ -1572,7 +1582,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           Configurar
                         </button>
                       </div>
-                      <div className="pro-schedule-badges">
+                      <div className="/*pro-schedule-badges*/ sched-table-container">
                         {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayName, idx) => {
                           const dayNum = (idx + 1) % 7
                           const sched = schedules.find((s) => s.professionalId === p.id && s.dayOfWeek === dayNum)
@@ -2015,7 +2025,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 <X size={18} />
               </button>
             </div>
-            {formError && <p className="error-copy">{formError}</p>}
+            {formError && <p className="error-copy nav-badge summary-banner btn-cancel agenda-item-card">{formError}</p>}
             <form onSubmit={handleCreateInternalAppointment} className="modern-form">
               <div className="form-toggle-segment" role="group" aria-label="Tipo de clienta">
                 <button
@@ -2723,13 +2733,15 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             </div>
 
             <div className="modal-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setIsSchedulesModalOpen(false)}
-              >
-                Listo
-              </button>
+              <div className="sched-toggle-btn sched-submit-field"> 
+                <button
+                  type="button"
+                  className="btn-primary-compact"
+                  onClick={() => setIsSchedulesModalOpen(false)}
+                >
+                  Listo
+                </button>
+              </div>
             </div>
           </div>
         </div>
