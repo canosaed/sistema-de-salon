@@ -104,6 +104,45 @@ WHERE nullif(trim(a.service), '') IS NOT NULL
 GROUP BY lower(trim(a.service))
 ON CONFLICT (id) DO NOTHING;
 
+-- Completa categorías y valores del catálogo base cuando la migración legacy sólo creó servicios por nombre.
+INSERT INTO service_category (id, "userId", name, slug, description, "order")
+SELECT category.id, owners."userId", category.name, category.slug, category.description, category."order"
+FROM (VALUES
+  ('cat-manos', 'Manos', 'manos', 'Cuidado y belleza de manos y uñas', 1),
+  ('cat-pies', 'Pies', 'pies', 'Pedicuría tradicional, estética y combinada', 2),
+  ('cat-pestanas', 'Pestañas', 'pestanas', 'Lifting y extensiones de pestañas', 3)
+) AS category(id, name, slug, description, "order")
+CROSS JOIN LATERAL (SELECT "userId" FROM service LIMIT 1) owners
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE service
+SET "categoryId" = CASE name WHEN 'Soft gel' THEN 'cat-manos' WHEN 'Kapping acrílico / gel' THEN 'cat-manos' ELSE "categoryId" END,
+    price = CASE name WHEN 'Soft gel' THEN 27000 WHEN 'Kapping acrílico / gel' THEN 22000 ELSE price END,
+    "durationMinutes" = CASE name WHEN 'Soft gel' THEN 90 WHEN 'Kapping acrílico / gel' THEN 60 ELSE "durationMinutes" END
+WHERE name IN ('Soft gel', 'Kapping acrílico / gel');
+
+INSERT INTO salon_setting (id, "salonName", "timeZone", currency, "minNoticeHoursForBooking", "minNoticeHoursForCancellation", "autoConfirmPublicBookings", "defaultDepositType", "defaultDepositPercentage", "defaultDepositFixed")
+VALUES ('salon-setting-1', 'Atelier Beauty Studio', 'America/Argentina/Buenos_Aires', 'ARS', 2, 24, false, 'percentage', 30, 5000)
+ON CONFLICT (id) DO NOTHING;
+
+-- Migra los horarios y asociaciones de la profesional que existe en el catálogo legacy.
+INSERT INTO professional_schedule (id, "professionalId", "dayOfWeek", "startTime", "endTime", "breakStartTime", "breakEndTime", "isActive")
+SELECT schedule.id, professional.id, schedule."dayOfWeek", schedule."startTime", schedule."endTime", schedule."breakStartTime", schedule."breakEndTime", schedule."isActive"
+FROM (VALUES
+  ('sched-val-1', 1, '09:00', '19:00', '13:00', '14:00'), ('sched-val-2', 2, '09:00', '19:00', '13:00', '14:00'),
+  ('sched-val-3', 3, '09:00', '19:00', '13:00', '14:00'), ('sched-val-4', 4, '09:00', '19:00', '13:00', '14:00'),
+  ('sched-val-5', 5, '09:00', '19:00', '13:00', '14:00'), ('sched-val-6', 6, '09:00', '19:00', '13:00', '14:00')
+) AS schedule(id, "dayOfWeek", "startTime", "endTime", "breakStartTime", "breakEndTime")
+CROSS JOIN LATERAL (SELECT id FROM professional ORDER BY "createdAt" LIMIT 1) professional
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO professional_service (id, "professionalId", "serviceId")
+SELECT link.id, professional.id, service.id
+FROM (VALUES ('ps-val-soft', 'Soft gel'), ('ps-val-kapping', 'Kapping acrílico / gel')) AS link(id, service_name)
+CROSS JOIN LATERAL (SELECT id FROM professional ORDER BY "createdAt" LIMIT 1) professional
+JOIN service ON service.name = link.service_name
+ON CONFLICT DO NOTHING;
+
 UPDATE appointment a
 SET "clientId" = COALESCE(a."clientId", c.id),
     "professionalId" = COALESCE(a."professionalId", p.id),
