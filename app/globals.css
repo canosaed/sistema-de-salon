@@ -2634,7 +2634,7 @@ button, input, select { font: inherit; }
 
 .catalog-management-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -2706,7 +2706,7 @@ button, input, select { font: inherit; }
 .catalog-list {
   display: grid;
   gap: 0.35rem;
-  max-height: 260px;
+  max-height: 380px;
   margin: 0.9rem 0 0;
   padding: 0;
   overflow: auto;
@@ -2767,7 +2767,7 @@ button, input, select { font: inherit; }
   color: #a13e35;
   font-size: 0.78rem;
 }
-
+/*
 .professional-specialties-field {
   min-width: 0;
   margin: 0;
@@ -2807,7 +2807,273 @@ button, input, select { font: inherit; }
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.65rem;
+}*/
+
+
+/* ==========================================
+   ESPECIALIDADES - CHIPS COMPACTOS
+========================================== */
+
+.professional-specialties-field {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  color: #68564f;
+  font-size: 0.8rem;
 }
+
+/* Título */
+.professional-specialties-field legend {
+  margin-bottom: 0.15rem;
+  padding: 0;
+
+  color: #352c29;
+  font-size: 0.88rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+/* Contenedor flexible de chips */
+.professional-specialties-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 2px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ddc9c1 transparent;
+}
+
+/* Chip individual */
+.professional-specialties-options label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+
+  min-height: 30px;
+  padding: 0.35rem 0.75rem;
+
+  border: 1px solid #e9e1dd;
+  border-radius: 50px;
+
+  background: #fff;
+  color: #75645d;
+
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.2;
+
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/* Checkbox oculto visualmente, pero accesible */
+.professional-specialties-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Especialidad seleccionada */
+.professional-specialties-options label:has(input:checked) {
+  background: #f8ece7;
+  border-color: #d9b5a8;
+  color: #885b4d;
+  font-weight: 650;
+}
+
+/* Indicador de selección */
+.professional-specialties-options label:has(input:checked)::before {
+  content: "✓";
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #aa7666;
+}
+
+/* Hover */
+.professional-specialties-options label:hover {
+  border-color: #c99b8d;
+  background: #fcf6f3;
+}
+
+/* Hover seleccionado */
+.professional-specialties-options
+label:has(input:checked):hover {
+  background: #f4e4dd;
+}
+
+/* Accesibilidad teclado */
+.professional-specialties-options
+label:has(input:focus-visible) {
+  outline: 2px solid #bd8a7b;
+  outline-offset: 3px;
+}
+
+/* ==========================================
+   AGREGAR ESPECIALIDAD
+========================================== */
+
+.professional-specialty-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Input */
+.professional-specialty-add input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0.55rem 0.75rem;
+
+  border: 1px solid #e9dfda;
+  border-radius: 8px;
+
+  background: #fff;
+  color: #352c29;
+
+  font: inherit;
+  font-size: 0.8rem;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Placeholder */
+.professional-specialty-add input::placeholder {
+  color: #b7a9a2;
+}
+
+/* Focus */
+.professional-specialty-add input:focus {
+  border-color: #bd8a7b;
+  box-shadow: 0 0 0 3px rgba(185, 130, 114, 0.12);
+}
+
+/* Botón */
+.professional-specialty-add button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0.5rem 0.8rem;
+
+  border: 1px solid #b98272;
+  border-radius: 8px;
+
+  background: #b98272;
+  color: #fff;
+
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: all 0.18s ease;
+}
+
+/* Hover botón */
+.professional-specialty-add button:not(:disabled):hover {
+  background: #a56e5e;
+  border-color: #a56e5e;
+  box-shadow: 0 2px 6px rgba(165, 110, 94, 0.18);
+}
+
+/* Disabled */
+.professional-specialty-add button:disabled {
+  background: #eee8e4;
+  border-color: #eee8e4;
+  color: #b8aaa3;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Active */
+.professional-specialty-add button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Encabezado de especialidades */
+.professional-specialties-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+
+    margin-bottom: 0.25rem;
+
+    color: #96857e;
+    font-size: 0.72rem;
+}
+
+/* Contador */
+.professional-specialties-counter {
+    flex-shrink: 0;
+    padding: 0.25rem 0.6rem;
+
+    border-radius: 50px;
+    background: #f8ece7;
+    color: #956858;
+
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 480px) {
+  .professional-specialties-options {
+    max-height: 180px;
+    gap: 0.4rem;
+  }
+
+  .professional-specialties-options label {
+    min-height: 29px;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.74rem;
+  }
+
+  .professional-specialty-add button {
+    padding: 0.5rem 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .professional-specialties-options label,
+  .professional-specialty-add input,
+  .professional-specialty-add button {
+    transition: none;
+  }
+}
+
 
 .settings-section-header h4 {
   margin: 0;

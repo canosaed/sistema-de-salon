@@ -220,6 +220,9 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     initials: '',
   })
 
+  // contador Especialidades
+  const selectedSpecialtiesCount = proForm.specialtyIds.length;
+
   // Formulario Nuevo Turno Interno
   const [formClientMode, setFormClientMode] = useState<'existing' | 'new'>('existing')
   const [formClientId, setFormClientId] = useState('')
@@ -1846,9 +1849,36 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       <tr key={pay.id}>
                         <td>{pay.createdAt?.split('T')[0] || todayStr}</td>
                         <td><b>${Number(pay.amount).toLocaleString('es-AR')} ARS</b></td>
-                        <td><span className="type-badge">{pay.type}</span></td>
-                        <td>{pay.method}</td>
-                        <td><span className="status-pill confirmed">{pay.status}</span></td>
+                        <td>
+                          <span className="type-badge">
+                          {
+                            pay.type === 'deposit' ? 'Seña' :
+                            pay.type === 'partial' ? 'Pago parcial' :
+                            pay.type === 'full' ? 'Pago total' :
+                            pay.type === 'refund' ? 'Reembolso / Devolución' : pay.type
+                          }
+                          </span>
+                        </td>
+                        <td>
+                          <span className="type-badge">
+                            {
+                              pay.method === 'cash' ? 'Efectivo' :
+                              pay.method === 'transfer' ? 'Transferencia' :
+                              pay.method === 'card' ? 'Tarjeta' : pay.method
+                            }
+                          </span>
+                        </td>
+                        <td>
+                          <span className="status-pill confirmed">
+                          {
+                            pay.status === 'confirmed' ? 'Confirmado' :
+                            pay.status === 'pending_confirmation' ? 'Pendiente' :
+                            pay.status === 'in_progress' ? 'En curso' :
+                            pay.status === 'completed' ? 'Finalizado' :
+                            pay.status === 'cancelled' ? 'Cancelado' : pay.status
+                           }
+                          </span>
+                        </td>
                         <td>{pay.notes || '—'}</td>
                       </tr>
                     ))}
@@ -2175,13 +2205,19 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   </button>
                 </div>
               </form>
-              <CatalogManagement
-                initialCategories={initialData.categories}
-                initialSpecialties={initialData.specialties}
-              />
+              
             </div>
           </div>
         )}
+        {/* CATALOGO : CATEGORIAS y ESPECIALIDADES */}
+          {isAdmin && activeTab === 'Configuración' && (
+            <section className='tab-content'>
+              <CatalogManagement 
+                initialCategories={initialData.categories}
+                initialSpecialties={initialData.specialties}
+              />
+            </section>
+          )}
       </section>
 
       {/* -------------------------------------------------------------------- */}
@@ -2970,7 +3006,21 @@ export default function DashboardClient({ initialData }: DashboardProps) {
               </label>
               <fieldset className="professional-specialties-field">
                 <legend>Especialidades</legend>
-                <div className="professional-specialties-options">
+
+                  <div className="professional-specialties-header mt-2">
+                    <span>
+                      Seleccioná las especialidades del profesional.
+                    </span>
+
+                    <span className="professional-specialties-counter">
+                      {selectedSpecialtiesCount}{" "}
+                      {selectedSpecialtiesCount === 1
+                        ? "seleccionada"
+                        : "seleccionadas"}
+                    </span>
+                  </div>
+
+                <div className="professional-specialties-options mt-5">
                   {specialtyOptions.map((specialty) => (
                     <label key={specialty.id}>
                       <input

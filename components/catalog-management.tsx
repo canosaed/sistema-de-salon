@@ -117,7 +117,7 @@ export function CatalogManagement({
         <h4 id="catalog-management-title">Catálogos</h4>
         <p>Administrá las categorías de servicios y las especialidades disponibles para el equipo.</p>
       </div>
-      {error && <p className="catalog-management-error" role="alert">{error}</p>}
+      {error && <p className="catalog-management-error nav-badge summary-banner btn-cancel agenda-item-card" role="alert">{error}</p>}
       <div className="catalog-management-grid">
         <section className="catalog-card" aria-labelledby="categories-title">
           <div className="catalog-card-title">
@@ -126,7 +126,7 @@ export function CatalogManagement({
               <p>Se muestran en el formulario de servicios y en las reservas.</p>
             </div>
           </div>
-          <form onSubmit={saveCategory} className="catalog-form">
+          <form onSubmit={saveCategory} className="catalog-form reschedule-context-card">
             <label>
               Nombre
               <input
@@ -154,7 +154,7 @@ export function CatalogManagement({
               />
             </label>
             <div className="catalog-form-actions">
-              <button type="submit" className="primary-button-sm" disabled={pending}>
+              <button type="submit" className="btn-primary-compact mt-2" disabled={pending}>
                 {categoryForm.id ? <Pencil size={14} /> : <Plus size={14} />}
                 {categoryForm.id ? 'Guardar' : 'Agregar categoría'}
               </button>
@@ -169,7 +169,7 @@ export function CatalogManagement({
               )}
             </div>
           </form>
-          <ul className="catalog-list">
+          <ul className="catalog-list main-content">
             {initialCategories.map((category) => (
               <li key={category.id}>
                 <div>
@@ -205,14 +205,14 @@ export function CatalogManagement({
           </ul>
         </section>
 
-        <section className="catalog-card" aria-labelledby="specialties-title">
+        <section className="catalog-card mt-5" aria-labelledby="specialties-title">
           <div className="catalog-card-title">
             <div>
               <h5 id="specialties-title">Especialidades</h5>
               <p>Una profesional puede tener varias especialidades asignadas.</p>
             </div>
           </div>
-          <form onSubmit={saveSpecialty} className="catalog-form">
+          <form onSubmit={saveSpecialty} className="catalog-form reschedule-context-card">
             <label>
               Nombre
               <input
@@ -223,7 +223,7 @@ export function CatalogManagement({
               />
             </label>
             <div className="catalog-form-actions">
-              <button type="submit" className="primary-button-sm" disabled={pending}>
+              <button type="submit" className="btn-primary-compact mt-2" disabled={pending}>
                 {specialtyId ? <Pencil size={14} /> : <Plus size={14} />}
                 {specialtyId ? 'Guardar' : 'Agregar especialidad'}
               </button>
@@ -238,7 +238,7 @@ export function CatalogManagement({
               )}
             </div>
           </form>
-          <ul className="catalog-list">
+          <ul className="catalog-list main-content">
             {initialSpecialties.map((specialty) => (
               <li key={specialty.id}>
                 <strong>{specialty.name}</strong>
