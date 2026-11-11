@@ -228,6 +228,10 @@ async function main() {
       } else {
         assert.equal(response.status, 200, `${account.role} should be able to load the panel.`)
         const html = await response.text()
+        assert.match(html, new RegExp(`E2E ${account.role}`), 'The authenticated panel should show the current user name.')
+        assert.match(html, new RegExp(account.email), 'The authenticated panel should show the current user email.')
+        assert.match(html, /Cerrar sesión/, 'The account menu should offer a sign-out action.')
+        assert.match(html, />E[AR]<\/span>/, 'The account avatar should show initials.')
         if (account.role === 'admin') {
           assert.match(html, /Usuarios y equipo/, 'Admin navigation should expose user management.')
           assert.match(html, /Inventario/, 'Admin navigation should expose inventory.')
@@ -456,6 +460,9 @@ async function main() {
             [temporarySalonName],
           )).rowCount, 1)
         }
+        await page.locator('.account-menu > summary').click()
+        await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+        await page.waitForURL('**/sign-in')
         await context.close()
         await browser.close()
         browser = undefined

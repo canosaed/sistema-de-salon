@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   CalendarDays,
   Clock3,
@@ -30,6 +31,7 @@ import {
   ChevronLeft,
   Trash2,
   Check,
+  ChevronDown,
 } from 'lucide-react'
 import {
   getAgendaPeriodRange,
@@ -57,6 +59,7 @@ import {
 import { createMaterialAction, updateMaterialAction, deleteMaterialAction } from '@/app/actions/inventory'
 import { updateSalonSettingsAction } from '@/app/actions/settings'
 import { getSalonDateString } from '@/lib/salon-time'
+import { authClient } from '@/lib/auth-client'
 
 interface DashboardProps {
   initialData: {
@@ -71,12 +74,45 @@ interface DashboardProps {
     inventoryMovements: any[]
     settings: any
     role: 'admin' | 'receptionist'
+    currentUser: {
+      name: string
+      email: string
+    }
     schedules?: any[]
   }
 }
 
 export default function DashboardClient({ initialData }: DashboardProps) {
+  const router = useRouter()
   const isAdmin = initialData.role === 'admin'
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState('')
+  const userInitials = initialData.currentUser.name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toLocaleUpperCase() || initialData.currentUser.email[0]?.toLocaleUpperCase() || 'U'
+
+  async function handleSignOut() {
+    setIsSigningOut(true)
+    setSignOutError('')
+    try {
+      const result = await authClient.signOut()
+      if (result.error) {
+        setSignOutError('No pudimos cerrar la sesión. Inténtalo nuevamente.')
+        return
+      }
+      router.replace('/sign-in')
+      router.refresh()
+    } catch {
+      setSignOutError('No pudimos cerrar la sesión. Inténtalo nuevamente.')
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
   // Pestaña activa
   const [activeTab, setActiveTab] = useState<
     'Resumen' | 'Agenda' | 'Reservas' | 'Clientes' | 'Servicios' | 'Profesionales' | 'Pagos' | 'Inventario' | 'Reportes' | 'Configuración'
@@ -763,6 +799,31 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             >
               <Plus size={18} /> Nuevo Turno
             </button>
+            <details className="account-menu">
+              <summary aria-label={`Cuenta de ${initialData.currentUser.name}`}>
+                <span className="account-avatar" aria-hidden="true">{userInitials}</span>
+                <span className="account-summary-details">
+                  <strong>{initialData.currentUser.name}</strong>
+                  <small>{isAdmin ? 'Administrador' : 'Recepción'}</small>
+                </span>
+                <ChevronDown className="account-chevron" size={15} aria-hidden="true" />
+              </summary>
+              <div className="account-menu-panel">
+                <div className="account-menu-identity">
+                  <span className="account-avatar account-avatar-large" aria-hidden="true">{userInitials}</span>
+                  <div>
+                    <strong>{initialData.currentUser.name}</strong>
+                    <span>{initialData.currentUser.email}</span>
+                    <small>{isAdmin ? 'Administrador' : 'Recepción'}</small>
+                  </div>
+                </div>
+                {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
+                <button type="button" onClick={handleSignOut} disabled={isSigningOut}>
+                  <LogOut size={16} aria-hidden="true" />
+                  {isSigningOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+                </button>
+              </div>
+            </details>
           </div>
         </header>
 

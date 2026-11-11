@@ -170,6 +170,10 @@ export async function getDashboardData() {
     settings: isAdmin ? persistedSettings[0] ?? null : null,
     schedules: persistedSchedules,
     role,
+    currentUser: {
+      name: sessionUser.name,
+      email: sessionUser.email,
+    },
   }
 }
 
