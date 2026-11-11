@@ -84,7 +84,15 @@ async function main() {
         }
       }
     }
-    const migratedColumns = new Set(['user.isActive'])
+    const migratedColumns = new Set([
+      'user.isActive',
+      'specialty.id',
+      'specialty.name',
+      'specialty.createdAt',
+      'professional_specialty.id',
+      'professional_specialty.professionalId',
+      'professional_specialty.specialtyId',
+    ])
     const extraColumns = databaseColumns.rows
       .map(({ tableName, columnName }) => `${tableName}.${columnName}`)
       .filter((name) =>
@@ -160,6 +168,18 @@ async function main() {
           AND column_name = 'isActive' AND data_type = 'boolean' AND is_nullable = 'NO'
       ) AS exists
     `)
+    const specialtyCatalog = await client.query<{
+      specialtyTable: boolean
+      professionalSpecialtyTable: boolean
+      specialtyNameIndex: boolean
+      professionalSpecialtyPairIndex: boolean
+    }>(`
+      SELECT
+        to_regclass('public.specialty') IS NOT NULL AS "specialtyTable",
+        to_regclass('public.professional_specialty') IS NOT NULL AS "professionalSpecialtyTable",
+        to_regclass('public.specialty_name_lower_unique') IS NOT NULL AS "specialtyNameIndex",
+        to_regclass('public.professional_specialty_pair_unique') IS NOT NULL AS "professionalSpecialtyPairIndex"
+    `)
     const appointmentCount = tables.rows.some(({ tableName }) => tableName === 'appointment')
       ? await client.query<{ count: string }>('SELECT count(*)::text AS count FROM appointment')
       : null
@@ -196,6 +216,7 @@ async function main() {
       legacyMigrationAudit: migrationAudit?.rows.map(({ migrationName }) => migrationName) ?? [],
       emailVerifiedType: emailVerifiedType.rows[0]?.dataType ?? 'not available',
       userActiveStatusColumn: userActiveStatus.rows[0]?.exists ?? false,
+      specialtyCatalog: specialtyCatalog.rows[0] ?? null,
       appointmentCount: appointmentCount?.rows[0]?.count ?? 'not available',
       catalogCounts: catalogCounts.rows[0] ?? {},
       accountCounts: accountCounts.rows[0] ?? {},

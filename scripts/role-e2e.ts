@@ -54,6 +54,13 @@ async function main() {
   const demoServiceName = `HTTP E2E Service ${runId}`
   const demoProfessionalName = `HTTP E2E Professional ${runId}`
   const demoProfessionalUpdatedName = `${demoProfessionalName} Updated`
+  const demoSpecialtyNames = [
+    `HTTP E2E Specialty One ${runId}`,
+    `HTTP E2E Specialty Two ${runId}`,
+  ]
+  const demoCategoryName = `HTTP E2E Category ${runId}`
+  const demoCategoryUpdatedName = `${demoCategoryName} Updated`
+  const demoCatalogSpecialtyName = `HTTP E2E Catalog Specialty ${runId}`
   const demoMaterialName = `HTTP E2E Material ${runId}`
   const actionStartDateText = salonDate(2)
   const actionRescheduleDate = salonDate(5)
@@ -100,6 +107,11 @@ async function main() {
       await db.query('DELETE FROM professional WHERE name IN ($1, $2)', [
         demoProfessionalName,
         demoProfessionalUpdatedName,
+      ])
+      await db.query('DELETE FROM specialty WHERE name = ANY($1::text[])', [demoSpecialtyNames])
+      await db.query('DELETE FROM specialty WHERE name = $1', [demoCatalogSpecialtyName])
+      await db.query('DELETE FROM service_category WHERE name = ANY($1::text[])', [
+        [demoCategoryName, demoCategoryUpdatedName],
       ])
       await db.query('DELETE FROM professional_schedule WHERE id = $1', [actionScheduleId])
       await db.query('DELETE FROM professional WHERE id = $1', [actionProfessionalId])
@@ -345,7 +357,14 @@ async function main() {
         const professionalDialog = page.getByRole('dialog', { name: 'Nueva Profesional' })
         await professionalDialog.getByLabel('Nombre y Apellido:').fill(demoProfessionalName)
         await professionalDialog.getByLabel('Teléfono:').fill(`991${runId.replaceAll('-', '').slice(0, 10)}`)
-        await professionalDialog.getByLabel('Especialidades:').fill('Auditoría E2E')
+        for (const specialtyName of demoSpecialtyNames) {
+          await professionalDialog.getByLabel('Nueva especialidad').fill(specialtyName)
+          await professionalDialog.getByRole('button', { name: 'Agregar', exact: true }).click()
+          await professionalDialog.getByRole('checkbox', { name: specialtyName }).waitFor()
+        }
+        for (const specialtyName of demoSpecialtyNames) {
+          assert.equal(await professionalDialog.getByRole('checkbox', { name: specialtyName }).isChecked(), true)
+        }
         await professionalDialog.getByRole('button', { name: 'Guardar Profesional' }).click()
         await professionalDialog.waitFor({ state: 'hidden' })
         const createdProfessional = await db.query<{ id: string; specialties: string | null }>(
@@ -353,7 +372,11 @@ async function main() {
           [demoProfessionalName],
         )
         assert.ok(createdProfessional.rows[0], 'Admin UI should create a professional in PostgreSQL.')
-        assert.equal(createdProfessional.rows[0]?.specialties, 'Auditoría E2E')
+        assert.equal(createdProfessional.rows[0]?.specialties, demoSpecialtyNames.join(', '))
+        assert.equal((await db.query(
+          'SELECT 1 FROM professional_specialty ps JOIN specialty s ON s.id = ps."specialtyId" WHERE ps."professionalId" = $1 AND s.name = ANY($2::text[])',
+          [createdProfessional.rows[0].id, demoSpecialtyNames],
+        )).rowCount, 2, 'The professional should persist both selected specialties.')
         const professionalCard = page.locator('.pro-admin-card').filter({ hasText: demoProfessionalName })
         await professionalCard.getByRole('button', { name: 'Editar' }).click()
         const editProfessionalDialog = page.getByRole('dialog', { name: 'Editar Profesional' })
@@ -434,6 +457,50 @@ async function main() {
         assert.equal(stockMovement.rows[0]?.currentStock, '14.00')
 
         await page.getByRole('button', { name: 'Configuración' }).click()
+        const catalogCards = page.locator('.catalog-card')
+        const categoryCard = catalogCards.nth(0)
+        await categoryCard.locator('form input').nth(0).fill(demoCategoryName)
+        await categoryCard.getByRole('button', { name: 'Agregar categoría' }).click()
+        await categoryCard.getByText(demoCategoryName, { exact: true }).waitFor()
+        const createdCategory = await db.query<{ id: string }>(
+          'SELECT id FROM service_category WHERE name = $1',
+          [demoCategoryName],
+        )
+        assert.ok(createdCategory.rows[0], 'Admin UI should create a service category.')
+        await categoryCard.getByRole('button', { name: `Editar categoría ${demoCategoryName}` }).click()
+        await categoryCard.locator('form input').nth(0).fill(demoCategoryUpdatedName)
+        await categoryCard.getByRole('button', { name: 'Guardar', exact: true }).click()
+        await categoryCard.getByText(demoCategoryUpdatedName, { exact: true }).waitFor()
+        assert.equal((await db.query<{ name: string }>(
+          'SELECT name FROM service_category WHERE id = $1',
+          [createdCategory.rows[0].id],
+        )).rows[0]?.name, demoCategoryUpdatedName, 'Admin UI category edit should persist.')
+        const deleteCategoryDialog = page.waitForEvent('dialog').then((dialog) => dialog.accept())
+        await categoryCard.getByRole('button', { name: `Eliminar categoría ${demoCategoryUpdatedName}` }).click()
+        await deleteCategoryDialog
+        assert.equal((await db.query(
+          'SELECT 1 FROM service_category WHERE id = $1',
+          [createdCategory.rows[0].id],
+        )).rowCount, 0, 'Admin UI should delete an unused service category.')
+
+        const specialtyCard = catalogCards.nth(1)
+        await specialtyCard.locator('form input').nth(0).fill(demoCatalogSpecialtyName)
+        await specialtyCard.getByRole('button', { name: 'Agregar especialidad' }).click()
+        await specialtyCard.getByText(demoCatalogSpecialtyName, { exact: true }).waitFor()
+        const catalogSpecialty = await db.query<{ id: string }>(
+          'SELECT id FROM specialty WHERE name = $1',
+          [demoCatalogSpecialtyName],
+        )
+        assert.ok(catalogSpecialty.rows[0], 'Admin UI should create a specialty.')
+        const deleteSpecialtyDialog = page.waitForEvent('dialog').then((dialog) => dialog.accept())
+        await specialtyCard.getByRole('button', { name: `Eliminar especialidad ${demoCatalogSpecialtyName}` }).click()
+        await deleteSpecialtyDialog
+        await specialtyCard.getByText(demoCatalogSpecialtyName, { exact: true }).waitFor({ state: 'detached' })
+        assert.equal((await db.query(
+          'SELECT 1 FROM specialty WHERE id = $1',
+          [catalogSpecialty.rows[0].id],
+        )).rowCount, 0, 'Admin UI should delete an unassigned specialty.')
+
         const desktopViewportWidths = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,
           scrollWidth: document.documentElement.scrollWidth,
@@ -460,6 +527,15 @@ async function main() {
             [temporarySalonName],
           )).rowCount, 1)
         }
+        await page.setViewportSize({ width: 390, height: 844 })
+        const mobileCatalogViewport = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+        }))
+        assert.ok(
+          mobileCatalogViewport.scrollWidth <= mobileCatalogViewport.clientWidth,
+          `Admin catalog overflows at mobile width: ${JSON.stringify(mobileCatalogViewport)}`,
+        )
         await page.locator('.account-menu > summary').click()
         await page.getByRole('button', { name: 'Cerrar sesión' }).click()
         await page.waitForURL('**/sign-in')

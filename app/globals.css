@@ -2626,6 +2626,189 @@ button, input, select { font: inherit; }
   padding-bottom: 0.5rem;
 }
 
+.catalog-management {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #f2e9e6;
+}
+
+.catalog-management-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.catalog-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #eee3df;
+  border-radius: 12px;
+  background: #fffdfb;
+}
+
+.catalog-card-title h5 {
+  margin: 0;
+  color: #3b2823;
+  font-size: 0.95rem;
+}
+
+.catalog-card-title p {
+  margin: 0.25rem 0 0;
+  color: #8c736c;
+  font-size: 0.76rem;
+}
+
+.catalog-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+.catalog-form label,
+.professional-specialties-field {
+  display: grid;
+  gap: 0.3rem;
+  color: #68564f;
+  font-size: 0.75rem;
+}
+
+.catalog-form input,
+.professional-specialty-add input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #e6d9d4;
+  border-radius: 7px;
+  background: #fff;
+  color: #352c29;
+  font: inherit;
+}
+
+.catalog-form-actions,
+.catalog-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.catalog-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #746660;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.catalog-list {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 260px;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.catalog-list li:not(.catalog-empty) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.35rem;
+  border-top: 1px solid #f1eae7;
+  color: #423a36;
+  font-size: 0.8rem;
+}
+
+.catalog-list li > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.catalog-list small {
+  color: #8c736c;
+  font-size: 0.68rem;
+}
+
+.catalog-row-actions button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #eee3df;
+  border-radius: 7px;
+  background: #fff;
+  color: #78635b;
+  cursor: pointer;
+}
+
+.catalog-row-actions button:last-child {
+  color: #a14f48;
+}
+
+.catalog-row-actions button:disabled,
+.catalog-form-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.catalog-empty {
+  padding: 0.7rem 0.35rem;
+  color: #8c736c;
+  font-size: 0.75rem;
+}
+
+.catalog-management-error {
+  margin: 0.4rem 0;
+  color: #a13e35;
+  font-size: 0.78rem;
+}
+
+.professional-specialties-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.professional-specialties-field legend {
+  margin-bottom: 0.45rem;
+  color: #352c29;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.professional-specialties-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.professional-specialties-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #68564f;
+  font-size: 0.8rem;
+}
+
+.professional-specialties-options input {
+  accent-color: #b98272;
+}
+
+.professional-specialty-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
 .settings-section-header h4 {
   margin: 0;
   font-size: 1.05rem;
@@ -3042,6 +3225,14 @@ button, input, select { font: inherit; }
   .dashboard-container .tab-content {
     min-width: 0;
     padding: 1rem 0.75rem;
+  }
+
+  .catalog-management-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .professional-specialties-options {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .dashboard-container .stats-row {

@@ -1,8 +1,8 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { professionalSchedules, professionals } from '@/lib/db/schema'
+import { professionalSchedules, professionalSpecialties, professionals, specialties } from '@/lib/db/schema'
 import { adminRoles, panelRoles, requireSalonRole } from '@/lib/staff-auth'
 
 export interface ProfessionalInput {
@@ -10,8 +10,32 @@ export interface ProfessionalInput {
   phone: string
   email?: string
   specialties?: string
+  specialtyIds?: string[]
   initials?: string
   serviceIds?: string[]
+}
+
+async function setProfessionalSpecialties(
+  transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  professionalId: string,
+  specialtyIds: string[],
+) {
+  const uniqueIds = [...new Set(specialtyIds)]
+  const selected = uniqueIds.length
+    ? await transaction.select().from(specialties).where(inArray(specialties.id, uniqueIds))
+    : []
+  if (selected.length !== uniqueIds.length) throw new Error('Una o más especialidades seleccionadas ya no existen.')
+
+  await transaction.delete(professionalSpecialties)
+    .where(eq(professionalSpecialties.professionalId, professionalId))
+  if (selected.length) {
+    await transaction.insert(professionalSpecialties).values(selected.map((specialty) => ({
+      id: crypto.randomUUID(),
+      professionalId,
+      specialtyId: specialty.id,
+    })))
+  }
+  return selected
 }
 
 export async function getProfessionals() {
@@ -24,30 +48,55 @@ export async function createProfessional(input: ProfessionalInput) {
   if (!input.name?.trim()) throw new Error('El nombre de la profesional es obligatorio.')
   if (!input.phone?.trim()) throw new Error('El teléfono de contacto es obligatorio.')
 
-  const [professional] = await db.insert(professionals).values({
-    id: crypto.randomUUID(),
-    name: input.name.trim(),
-    phone: input.phone.trim(),
-    email: input.email?.trim() || null,
-    specialties: input.specialties || null,
-    initials: input.initials?.trim() || input.name.trim().split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
-    isActive: true,
-  }).returning()
-  return professional
+  return db.transaction(async (transaction) => {
+    const id = crypto.randomUUID()
+    const [professional] = await transaction.insert(professionals).values({
+      id,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      email: input.email?.trim() || null,
+      specialties: input.specialtyIds === undefined ? input.specialties || null : null,
+      initials: input.initials?.trim() || input.name.trim().split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
+      isActive: true,
+    }).returning()
+    if (input.specialtyIds === undefined) return { ...professional, specialtyIds: [] }
+
+    const selectedSpecialties = await setProfessionalSpecialties(transaction, id, input.specialtyIds)
+    const specialtyNames = selectedSpecialties.map(({ name }) => name).join(', ') || null
+    const [updatedProfessional] = await transaction.update(professionals)
+      .set({ specialties: specialtyNames })
+      .where(eq(professionals.id, id))
+      .returning()
+    return {
+      ...updatedProfessional,
+      specialtyIds: selectedSpecialties.map(({ id: specialtyId }) => specialtyId),
+    }
+  })
 }
 
 export async function updateProfessional(id: string, input: Partial<ProfessionalInput>) {
   await requireSalonRole(adminRoles)
   if (!id) throw new Error('ID de profesional no provisto.')
-  const [professional] = await db.update(professionals).set({
-    ...(input.name !== undefined && { name: input.name.trim() }),
-    ...(input.phone !== undefined && { phone: input.phone.trim() }),
-    ...(input.email !== undefined && { email: input.email.trim() || null }),
-    ...(input.specialties !== undefined && { specialties: input.specialties || null }),
-    ...(input.initials !== undefined && { initials: input.initials.trim() || null }),
-    updatedAt: new Date(),
-  }).where(eq(professionals.id, id)).returning()
-  return professional
+  return db.transaction(async (transaction) => {
+    const selectedSpecialties = input.specialtyIds !== undefined
+      ? await setProfessionalSpecialties(transaction, id, input.specialtyIds)
+      : undefined
+    const specialtyNames = selectedSpecialties !== undefined
+      ? selectedSpecialties.map(({ name }) => name).join(', ') || null
+      : input.specialties
+    const [professional] = await transaction.update(professionals).set({
+      ...(input.name !== undefined && { name: input.name.trim() }),
+      ...(input.phone !== undefined && { phone: input.phone.trim() }),
+      ...(input.email !== undefined && { email: input.email.trim() || null }),
+      ...(specialtyNames !== undefined && { specialties: specialtyNames }),
+      ...(input.initials !== undefined && { initials: input.initials.trim() || null }),
+      updatedAt: new Date(),
+    }).where(eq(professionals.id, id)).returning()
+    return professional && {
+      ...professional,
+      specialtyIds: selectedSpecialties?.map(({ id: specialtyId }) => specialtyId),
+    }
+  })
 }
 
 export async function deleteProfessional(id: string) {

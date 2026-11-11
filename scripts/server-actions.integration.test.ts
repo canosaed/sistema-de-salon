@@ -40,6 +40,7 @@ const actionModules = Promise.all([
   import('@/app/actions/professionals'),
   import('@/app/actions/inventory'),
   import('@/app/actions/settings'),
+  import('@/app/actions/specialties'),
   import('@/app/actions/team'),
 ])
 
@@ -81,6 +82,7 @@ test('public booking and every exported Server Action persist through PostgreSQL
     professionals,
     inventory,
     settings,
+    specialties,
     team,
   ] = await actionModules
   const actionExports = {
@@ -119,6 +121,12 @@ test('public booking and every exported Server Action persist through PostgreSQL
       'updateMaterialAction',
     ]],
     settings: [settings, ['getSalonSettingsAction', 'updateSalonSettingsAction']],
+    specialties: [specialties, [
+      'createSpecialtyAction',
+      'deleteSpecialtyAction',
+      'getSpecialtiesAction',
+      'updateSpecialtyAction',
+    ]],
     team: [team, ['createTeamInvitation', 'getTeamUsers', 'setTeamUserActive', 'updateTeamUser']],
   } as const
   let actionCount = 0
@@ -130,7 +138,7 @@ test('public booking and every exported Server Action persist through PostgreSQL
     )
     actionCount += expectedExports.length
   }
-  assert.equal(actionCount, 40, 'The suite must account for every exported Server Action.')
+  assert.equal(actionCount, 44, 'The suite must account for every exported Server Action.')
   assert.ok(runDatabaseTests, 'Set SALON_RUN_DB_TESTS=1 to run action integration tests.')
   assert.ok(connectionString, 'DATABASE_URL is required.')
   const databaseUrl = new URL(connectionString)
@@ -155,6 +163,7 @@ test('public booking and every exported Server Action persist through PostgreSQL
   const professionalIds: string[] = []
   const serviceIds: string[] = []
   const categoryIds: string[] = []
+  const specialtyIds: string[] = []
   const materialIds: string[] = []
   const scheduleIds: string[] = []
   const clientPhones = [`${phonePrefix}1`, `${phonePrefix}2`, `${phonePrefix}4`]
@@ -186,7 +195,9 @@ test('public booking and every exported Server Action persist through PostgreSQL
       await db.query('DELETE FROM professional_service WHERE id = ANY($1::text[])', [professionalServiceIds])
       await db.query('DELETE FROM material WHERE id = ANY($1::text[])', [materialIds])
       await db.query('DELETE FROM service WHERE id = ANY($1::text[])', [serviceIds])
+      await db.query('DELETE FROM professional_specialty WHERE "professionalId" = ANY($1::text[])', [professionalIds])
       await db.query('DELETE FROM professional WHERE id = ANY($1::text[])', [professionalIds])
+      await db.query('DELETE FROM specialty WHERE id = ANY($1::text[])', [specialtyIds])
       await db.query('DELETE FROM service_category WHERE id = ANY($1::text[])', [categoryIds])
       if (originalSettings.rows[0]) {
         await db.query(
@@ -267,6 +278,13 @@ test('public booking and every exported Server Action persist through PostgreSQL
       order: 901,
     })
     assert.match(updatedCategory.slug, /action-e2e-updated/)
+    const firstSpecialty = await specialties.createSpecialtyAction(`E2E specialty one ${runId}`)
+    specialtyIds.push(firstSpecialty.id)
+    const secondSpecialty = await specialties.createSpecialtyAction(`E2E specialty two ${runId}`)
+    specialtyIds.push(secondSpecialty.id)
+    const renamedSpecialty = await specialties.updateSpecialtyAction(firstSpecialty.id, `E2E specialty renamed ${runId}`)
+    assert.match(renamedSpecialty.name, /renamed/)
+    assert.equal((await specialties.getSpecialtiesAction()).some(({ id }) => id === secondSpecialty.id), true)
 
     const service = await services.createService({
       categoryId: category.id,
@@ -277,6 +295,18 @@ test('public booking and every exported Server Action persist through PostgreSQL
       depositValue: 200,
     })
     serviceIds.push(service.id)
+    await assert.rejects(
+      categories.deleteCategoryAction(category.id),
+      /tiene servicios asociados/,
+      'A category assigned to a service must not be deleted.',
+    )
+    const unusedCategory = await categories.createCategoryAction({
+      name: `Unused action E2E ${runId}`,
+      description: 'temporary unused category',
+    })
+    categoryIds.push(unusedCategory.id)
+    assert.equal((await categories.deleteCategoryAction(unusedCategory.id)).id, unusedCategory.id)
+    categoryIds.splice(categoryIds.indexOf(unusedCategory.id), 1)
     assert.ok((await services.getServices()).some(({ id }) => id === service.id))
     const updatedService = await services.updateService(service.id, { price: 1900 })
     assert.equal(Number(updatedService?.price), 1900)
@@ -288,9 +318,15 @@ test('public booking and every exported Server Action persist through PostgreSQL
     professionalIds.push(professional.id)
     assert.ok((await professionals.getProfessionals()).some(({ id }) => id === professional.id))
     const updatedProfessional = await professionals.updateProfessional(professional.id, {
-      specialties: 'E2E test',
+      specialtyIds: [firstSpecialty.id, secondSpecialty.id],
     })
-    assert.equal(updatedProfessional?.specialties, 'E2E test')
+    assert.deepEqual(new Set(updatedProfessional?.specialtyIds), new Set([firstSpecialty.id, secondSpecialty.id]))
+    assert.match(updatedProfessional?.specialties || '', /E2E specialty renamed/)
+    await assert.rejects(
+      specialties.deleteSpecialtyAction(firstSpecialty.id),
+      /está asignada/,
+      'A specialty assigned to a professional must not be deleted.',
+    )
     const professionalServiceId = randomUUID()
     professionalServiceIds.push(professionalServiceId)
     await db.query(
@@ -315,7 +351,10 @@ test('public booking and every exported Server Action persist through PostgreSQL
 
     const catalog = await booking.getPublicBookingCatalog()
     assert.ok(catalog.services.some(({ id }) => id === service.id))
-    assert.ok(catalog.professionals.some(({ id }) => id === professional.id))
+    assert.deepEqual(
+      new Set(catalog.professionals.find(({ id }) => id === professional.id)?.specialties),
+      new Set([renamedSpecialty.name, secondSpecialty.name]),
+    )
     const availability = await booking.checkPublicAvailability({
       serviceId: service.id,
       professionalId: professional.id,
@@ -494,11 +533,15 @@ test('public booking and every exported Server Action persist through PostgreSQL
     await clients.deleteClient(createdClient.id)
     assert.equal(await professionals.deleteScheduleAction(savedSchedule.id).then(Boolean), true)
     scheduleIds.splice(scheduleIds.indexOf(savedSchedule.id), 1)
+    await professionals.updateProfessional(professional.id, { specialtyIds: [] })
     assert.ok((await inventory.deleteMaterialAction(materialRecord.id)).success)
     assert.ok((await professionals.deleteProfessional(professional.id)).id)
     professionalIds.splice(professionalIds.indexOf(professional.id), 1)
+    await specialties.deleteSpecialtyAction(firstSpecialty.id)
+    specialtyIds.splice(specialtyIds.indexOf(firstSpecialty.id), 1)
+    await specialties.deleteSpecialtyAction(secondSpecialty.id)
+    specialtyIds.splice(specialtyIds.indexOf(secondSpecialty.id), 1)
     await services.deleteService(service.id)
-    await categories.deleteCategoryAction(category.id)
 
     assert.equal((await services.getServices()).some(({ id }) => id === service.id), false)
     t.diagnostic(`Covered all ${actionCount} exported actions across booking, dashboard, categories, clients, services, professionals, inventory, settings, and team.`)

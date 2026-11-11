@@ -19,6 +19,8 @@ import {
   salonSettings,
   serviceCategories,
   services,
+  professionalSpecialties,
+  specialties,
   techniques,
 } from '@/lib/db/schema'
 import { registerStockMovementAction } from '@/app/actions/inventory'
@@ -87,6 +89,8 @@ export async function getDashboardData() {
     persistedSchedules,
     persistedSettings,
     persistedClients,
+    persistedSpecialties,
+    persistedProfessionalSpecialties,
   ] = await Promise.all([
     db
       .select({ appointment: appointments, client: clients, professional: professionals })
@@ -109,6 +113,8 @@ export async function getDashboardData() {
     db.select().from(professionalSchedules).where(eq(professionalSchedules.isActive, true)),
     db.select().from(salonSettings).limit(1),
     db.select().from(clients).where(eq(clients.isActive, true)),
+    db.select().from(specialties).orderBy(specialties.name),
+    db.select().from(professionalSpecialties),
   ])
 
   const dashboardPayments = persistedPayments.map(({ payment, client }) => ({
@@ -162,7 +168,18 @@ export async function getDashboardData() {
     services: persistedServices,
     techniques: persistedTechniques,
     materials: isAdmin ? persistedMaterials : [],
-    professionals: persistedProfessionals,
+    professionals: persistedProfessionals.map((professional) => {
+      const assigned = persistedProfessionalSpecialties
+        .filter((item) => item.professionalId === professional.id)
+        .map((item) => persistedSpecialties.find(({ id }) => id === item.specialtyId))
+        .filter((specialty): specialty is (typeof persistedSpecialties)[number] => Boolean(specialty))
+      return {
+        ...professional,
+        specialtyIds: assigned.map(({ id }) => id),
+        specialties: assigned.map(({ name }) => name).join(', ') || professional.specialties,
+      }
+    }),
+    specialties: persistedSpecialties,
     clients: persistedClients,
     appointments: dashboardAppointments,
     payments: dashboardPayments,

@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useTransition, useMemo } from 'react'
+import { Fragment, useEffect, useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CalendarDays,
@@ -58,8 +58,10 @@ import {
 } from '@/app/actions/professionals'
 import { createMaterialAction, updateMaterialAction, deleteMaterialAction } from '@/app/actions/inventory'
 import { updateSalonSettingsAction } from '@/app/actions/settings'
+import { createSpecialtyAction } from '@/app/actions/specialties'
 import { getSalonDateString } from '@/lib/salon-time'
 import { authClient } from '@/lib/auth-client'
+import { CatalogManagement } from '@/components/catalog-management'
 
 interface DashboardProps {
   initialData: {
@@ -74,6 +76,7 @@ interface DashboardProps {
     inventoryMovements: any[]
     settings: any
     role: 'admin' | 'receptionist'
+    specialties: Array<{ id: string; name: string }>
     currentUser: {
       name: string
       email: string
@@ -85,6 +88,10 @@ interface DashboardProps {
 export default function DashboardClient({ initialData }: DashboardProps) {
   const router = useRouter()
   const isAdmin = initialData.role === 'admin'
+  const [specialtyOptions, setSpecialtyOptions] = useState(initialData.specialties)
+  const [specialtyDraft, setSpecialtyDraft] = useState('')
+  const [specialtyError, setSpecialtyError] = useState('')
+  useEffect(() => setSpecialtyOptions(initialData.specialties), [initialData.specialties])
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState('')
   const userInitials = initialData.currentUser.name
@@ -209,7 +216,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
     name: '',
     phone: '',
     email: '',
-    specialties: '',
+    specialtyIds: [] as string[],
     initials: '',
   })
 
@@ -483,13 +490,14 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const handleSaveProfessional = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
+      setSpecialtyError('')
       try {
         if (proForm.id) {
           const updated = await updateProfessional(proForm.id, {
             name: proForm.name,
             phone: proForm.phone,
             email: proForm.email,
-            specialties: proForm.specialties,
+            specialtyIds: proForm.specialtyIds,
             initials: proForm.initials,
           })
           setProfessionals((prev) => prev.map((p) => (p.id === proForm.id ? updated : p)))
@@ -498,7 +506,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
             name: proForm.name,
             phone: proForm.phone,
             email: proForm.email,
-            specialties: proForm.specialties,
+            specialtyIds: proForm.specialtyIds,
             initials: proForm.initials,
           })
           setProfessionals((prev) => [...prev, created])
@@ -508,6 +516,22 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         alert(err.message)
       }
     })
+  }
+
+  async function handleAddSpecialty() {
+    setSpecialtyError('')
+    try {
+      const created = await createSpecialtyAction(specialtyDraft)
+      setSpecialtyOptions((previous) => [...previous, created].sort((a, b) => a.name.localeCompare(b.name, 'es')))
+      setProForm((previous) => ({
+        ...previous,
+        specialtyIds: [...previous.specialtyIds, created.id],
+      }))
+      setSpecialtyDraft('')
+      router.refresh()
+    } catch (error) {
+      setSpecialtyError(error instanceof Error ? error.message : 'No se pudo agregar la especialidad.')
+    }
   }
 
   const handleDeleteProfessional = (id: string, name: string) => {
@@ -944,7 +968,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       }}
                     >
                       <div className="catalog-item-main">
-                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '') || 'Sin categoría'}</span>
+                        <span className="srv-category-tag">{initialData.categories.find((category) => category.id === s.categoryId)?.name || 'Sin categoría'}</span>
                         <h4 className="catalog-item-name">{s.name}</h4>
                         <div className="catalog-item-meta">
                           <span className="srv-time-badge"><Clock3 size={12} /> {s.durationMinutes} min</span>
@@ -1534,7 +1558,12 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                                               <td>{appointment.date} {appointment.time}</td>
                                               <td>{appointment.serviceName}</td>
                                               <td>{appointment.professionalName}</td>
-                                              <td>{appointment.status}</td>
+                                              <td>{appointment.status === 'confirmed' ? 'Confirmado' :
+                                                  appointment.status === 'pending_confirmation' ? 'Pendiente' :
+                                                  appointment.status === 'in_progress' ? 'En curso' :
+                                                  appointment.status === 'completed' ? 'Finalizado' :
+                                                  appointment.status === 'cancelled' ? 'Cancelado' : appointment.status}
+                                              </td>
                                               <td>${Number(appointment.totalPrice).toLocaleString('es-AR')}</td>
                                               <td>
                                                 {appointment.history?.length
@@ -1603,7 +1632,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   <div key={s.id} className="service-admin-card">
                     <div className="srv-card-top">
                       <div>
-                        <span className="srv-category-tag">{s.categoryId?.replace('cat-', '') || 'Sin categoría'}</span>
+                        <span className="srv-category-tag">{initialData.categories.find((category) => category.id === s.categoryId)?.name || 'Sin categoría'}</span>
                         <h4>{s.name}</h4>
                       </div>
                       <span className="srv-price">${Number(s.price).toLocaleString('es-AR')} <small>ARS</small></span>
@@ -1680,9 +1709,11 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                       name: '',
                       phone: '',
                       email: '',
-                      specialties: '',
+                      specialtyIds: [],
                       initials: '',
                     })
+                    setSpecialtyError('')
+                    setSpecialtyDraft('')
                     setShowProfessionalModal('new')
                   }}
                 >
@@ -1763,9 +1794,11 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                               name: p.name,
                               phone: p.phone,
                               email: p.email || '',
-                              specialties: p.specialties || '',
+                              specialtyIds: p.specialtyIds || [],
                               initials: p.initials || '',
                             })
+                            setSpecialtyError('')
+                            setSpecialtyDraft('')
                             setShowProfessionalModal(p)
                           }}
                         >
@@ -2142,6 +2175,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   </button>
                 </div>
               </form>
+              <CatalogManagement
+                initialCategories={initialData.categories}
+                initialSpecialties={initialData.specialties}
+              />
             </div>
           </div>
         )}
@@ -2931,14 +2968,40 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   placeholder="camila@atelier.com"
                 />
               </label>
-              <label>
-                Especialidades:
-                <input
-                  value={proForm.specialties}
-                  onChange={(e) => setProForm({ ...proForm, specialties: e.target.value })}
-                  placeholder="Ej. Uñas esculpidas, Kapping y Polygel"
-                />
-              </label>
+              <fieldset className="professional-specialties-field">
+                <legend>Especialidades</legend>
+                <div className="professional-specialties-options">
+                  {specialtyOptions.map((specialty) => (
+                    <label key={specialty.id}>
+                      <input
+                        type="checkbox"
+                        checked={proForm.specialtyIds.includes(specialty.id)}
+                        onChange={(event) => setProForm((previous) => ({
+                          ...previous,
+                          specialtyIds: event.target.checked
+                            ? [...previous.specialtyIds, specialty.id]
+                            : previous.specialtyIds.filter((id) => id !== specialty.id),
+                        }))}
+                      />
+                      <span>{specialty.name}</span>
+                    </label>
+                  ))}
+                  {!specialtyOptions.length && <small>No hay especialidades cargadas; podés agregar la primera aquí.</small>}
+                </div>
+                <div className="professional-specialty-add">
+                  <input
+                    value={specialtyDraft}
+                    maxLength={80}
+                    onChange={(event) => setSpecialtyDraft(event.target.value)}
+                    placeholder="Nueva especialidad"
+                    aria-label="Nueva especialidad"
+                  />
+                  <button type="button" className="secondary-button" onClick={handleAddSpecialty} disabled={!specialtyDraft.trim()}>
+                    <Plus size={15} /> Agregar
+                  </button>
+                </div>
+                {specialtyError && <p className="catalog-management-error" role="alert">{specialtyError}</p>}
+              </fieldset>
               <div className="modal-foot">
                 <button type="button" className="secondary-button" onClick={() => setShowProfessionalModal(null)}>Cancelar</button>
                 <button type="submit" className="primary-button" disabled={isPending}>Guardar Profesional</button>

@@ -1,4 +1,5 @@
-import { integer, timestamp, text, pgTable, boolean, numeric, jsonb } from "drizzle-orm/pg-core"
+import { integer, timestamp, text, pgTable, boolean, numeric, jsonb, uniqueIndex } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 
 // ----------------------------------------------------
 // 1. SEGURIDAD Y USUARIOS (Better Auth & Roles)
@@ -146,6 +147,22 @@ export const professionals = pgTable("professional", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 })
+
+export const specialties = pgTable("specialty", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("specialty_name_lower_unique").on(sql`lower(${table.name})`),
+])
+
+export const professionalSpecialties = pgTable("professional_specialty", {
+  id: text("id").primaryKey(),
+  professionalId: text("professionalId").notNull().references(() => professionals.id, { onDelete: "cascade" }),
+  specialtyId: text("specialtyId").notNull().references(() => specialties.id, { onDelete: "restrict" }),
+}, (table) => [
+  uniqueIndex("professional_specialty_pair_unique").on(table.professionalId, table.specialtyId),
+])
 
 export const professionalServices = pgTable("professional_service", {
   id: text("id").primaryKey(),

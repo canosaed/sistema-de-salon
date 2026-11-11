@@ -52,6 +52,12 @@ El paquete agrega o actualiza solo registros identificados por `dev-demo-`:
 
 Las fechas de los turnos se calculan en `America/Argentina/Buenos_Aires` al ejecutar el seed. Sus IDs son estables, por lo que repetir la carga actualiza los tres turnos y evita generar duplicados. Los dos turnos futuros usan profesionales distintas.
 
+## Catálogos del panel
+
+Las migraciones crean el catálogo de especialidades y la relación muchos-a-muchos con profesionales. La migración convierte los valores históricos separados por comas en especialidades vinculadas, conservando el campo anterior para compatibilidad. Después de migrar, administración puede gestionar categorías de servicios y especialidades desde **Configuración → Catálogos**; el formulario de profesionales permite asignar varias especialidades y agregar una nueva sin salir del formulario.
+
+No se permite eliminar una categoría que tenga servicios asociados ni una especialidad asignada a una profesional. Primero hay que reasignar esos elementos desde el panel.
+
 ## Acceso al panel
 
 El paquete no contiene credenciales de demostración. Crea la primera cuenta administrativa con el flujo de registro y el `SALON_SETUP_TOKEN` configurado localmente; el token es independiente del permiso para cargar fixtures. No agregues contraseñas de prueba al repositorio.

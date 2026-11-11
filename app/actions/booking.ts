@@ -9,11 +9,13 @@ import {
   clients,
   professionalAbsences,
   professionalSchedules,
+  professionalSpecialties,
   professionalServices,
   professionals,
   salonSettings,
   serviceCategories,
   services,
+  specialties,
   scheduleBlocks,
   techniques,
   user,
@@ -222,13 +224,15 @@ async function loadPublicAvailability(params: BookingParams) {
 }
 
 export async function getPublicBookingCatalog() {
-  const [categories, servicesRows, techniquesRows, professionalsRows, professionalLinks, settingsRows] = await Promise.all([
+  const [categories, servicesRows, techniquesRows, professionalsRows, professionalLinks, settingsRows, specialtyRows, professionalSpecialtyRows] = await Promise.all([
     db.select().from(serviceCategories).orderBy(asc(serviceCategories.order)),
     db.select().from(services).where(and(eq(services.isActive, true), eq(services.allowPublicBooking, true))),
     db.select().from(techniques).where(eq(techniques.isActive, true)),
     db.select().from(professionals).where(eq(professionals.isActive, true)),
     db.select({ professionalId: professionalServices.professionalId, serviceId: professionalServices.serviceId }).from(professionalServices),
     db.select().from(salonSettings).limit(1),
+    db.select().from(specialties),
+    db.select().from(professionalSpecialties),
   ])
   const publicServiceIds = new Set(servicesRows.map(({ id }) => id))
   const bookableProfessionalIds = new Set(
@@ -245,12 +249,18 @@ export async function getPublicBookingCatalog() {
       ...technique,
       additionalPrice: Number(technique.additionalPrice),
     })),
-    professionals: professionalsRows.filter(({ id }) => bookableProfessionalIds.has(id)).map((professional) => ({
-      ...professional,
-      specialties: professional.specialties
-        ? professional.specialties.split(',').map((item) => item.trim())
-        : [],
-    })),
+    professionals: professionalsRows.filter(({ id }) => bookableProfessionalIds.has(id)).map((professional) => {
+      const assigned = professionalSpecialtyRows
+        .filter((item) => item.professionalId === professional.id)
+        .map((item) => specialtyRows.find(({ id }) => id === item.specialtyId)?.name)
+        .filter((name): name is string => Boolean(name))
+      return {
+        ...professional,
+        specialties: assigned.length
+          ? assigned
+          : professional.specialties?.split(',').map((item) => item.trim()).filter(Boolean) ?? [],
+      }
+    }),
     settings: settingsRows[0] ?? null,
   }
 }
