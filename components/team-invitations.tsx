@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   createTeamInvitation,
+  setTeamUserPassword,
   setTeamUserActive,
   updateTeamUser,
 } from '@/app/actions/team'
@@ -42,6 +43,7 @@ export default function TeamInvitations({
     ])),
   )
   const [email, setEmail] = useState('')
+  const [passwordValues, setPasswordValues] = useState<Record<string, string>>({})
   const [inviteRole, setInviteRole] = useState<TeamRole>('receptionist')
   const [invitationUrl, setInvitationUrl] = useState('')
   const [message, setMessage] = useState('')
@@ -104,6 +106,21 @@ export default function TeamInvitations({
         : `Se bloqueó temporalmente la cuenta de ${updated.name} y se cerraron sus sesiones.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo cambiar el estado de la cuenta.')
+    } finally {
+      setPendingAction('')
+    }
+  }
+
+  async function changePassword(account: TeamUser) {
+    const password = passwordValues[account.id] ?? ''
+    setPendingAction(account.id)
+    setMessage('')
+    try {
+      await setTeamUserPassword({ id: account.id, password })
+      setPasswordValues((current) => ({ ...current, [account.id]: '' }))
+      setMessage(`Se actualizó la contraseña de ${account.email} y se cerraron sus sesiones activas.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo actualizar la contraseña.')
     } finally {
       setPendingAction('')
     }
@@ -201,6 +218,7 @@ export default function TeamInvitations({
                         className="h-11 rounded-xl border border-[#d8d4cc] px-3 text-sm outline-none focus:border-[#937b5d]"
                       />
                     </label>
+                    
                     <label className="grid gap-2 text-xs font-semibold">
                       Rol
                       <select
@@ -230,6 +248,33 @@ export default function TeamInvitations({
                       className="h-11 rounded-xl border border-[#d8d4cc] px-4 text-sm font-semibold disabled:opacity-50"
                     >
                       {busy ? 'Procesando…' : account.isActive ? 'Bloquear' : 'Reactivar'}
+                    </button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                    <label className="grid gap-2 text-xs font-semibold">
+                      Nueva contraseña
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        maxLength={128}
+                        required
+                        value={passwordValues[account.id] ?? ''}
+                        onChange={(event) => setPasswordValues((current) => ({
+                          ...current,
+                          [account.id]: event.target.value,
+                        }))}
+                        placeholder="Mínimo 8 caracteres"
+                        className="h-11 rounded-xl border border-[#d8d4cc] px-3 text-sm outline-none focus:border-[#937b5d]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={pendingAction !== '' || (passwordValues[account.id] ?? '').length < 8}
+                      onClick={() => changePassword(account)}
+                      className="h-11 rounded-xl border border-[#d8d4cc] px-4 text-sm font-semibold disabled:opacity-50"
+                    >
+                      {busy ? 'Actualizando…' : 'Cambiar contraseña'}
                     </button>
                   </div>
                   {account.id === currentUserId && (

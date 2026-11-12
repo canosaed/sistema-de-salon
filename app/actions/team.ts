@@ -1,10 +1,11 @@
 'use server'
 
 import { createHash, randomBytes } from 'node:crypto'
+import { hashPassword } from 'better-auth/crypto'
 import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
-import { salonInvitations, session, user } from '@/lib/db/schema'
+import { account, salonInvitations, session, user } from '@/lib/db/schema'
 import { adminRoles, requireSalonRole, type SalonRole } from '@/lib/staff-auth'
 
 const salonRoles: readonly SalonRole[] = ['admin', 'receptionist', 'professional']
@@ -134,6 +135,36 @@ export async function updateTeamUser(input: { id: string; name: string; role: Sa
   revalidatePath('/equipo')
   revalidatePath('/')
   return updated
+}
+
+export async function setTeamUserPassword(input: { id: string; password: string }) {
+  const actor = await requireSalonRole(adminRoles)
+  if (!input.id) throw new Error('La cuenta no es válida.')
+  if (typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 128) {
+    throw new Error('La contraseña debe tener entre 8 y 128 caracteres.')
+  }
+
+  const hashedPassword = await hashPassword(input.password)
+  await db.transaction(async (tx) => {
+    await lockUserManagement(tx)
+    await assertActiveAdministrator(tx, actor.id)
+    const [target] = await tx.select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, input.id))
+      .limit(1)
+    if (!target) throw new Error('La cuenta no existe.')
+
+    const [updatedCredential] = await tx.update(account)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(and(eq(account.userId, target.id), eq(account.providerId, 'credential')))
+      .returning({ id: account.id })
+    if (!updatedCredential) throw new Error('La cuenta no tiene una contraseña para modificar.')
+
+    await tx.delete(session).where(eq(session.userId, target.id))
+  })
+
+  revalidatePath('/equipo')
+  return { id: input.id }
 }
 
 export async function setTeamUserActive(input: { id: string; isActive: boolean }) {

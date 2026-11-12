@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { loadEnvConfig } from '@next/env'
+import { hashPassword, verifyPassword } from 'better-auth/crypto'
 import { mock, test } from 'node:test'
 import { Client } from 'pg'
 
@@ -127,7 +128,13 @@ test('public booking and every exported Server Action persist through PostgreSQL
       'getSpecialtiesAction',
       'updateSpecialtyAction',
     ]],
-    team: [team, ['createTeamInvitation', 'getTeamUsers', 'setTeamUserActive', 'updateTeamUser']],
+    team: [team, [
+      'createTeamInvitation',
+      'getTeamUsers',
+      'setTeamUserActive',
+      'setTeamUserPassword',
+      'updateTeamUser',
+    ]],
   } as const
   let actionCount = 0
   for (const [moduleName, [module, expectedExports]] of Object.entries(actionExports)) {
@@ -138,7 +145,7 @@ test('public booking and every exported Server Action persist through PostgreSQL
     )
     actionCount += expectedExports.length
   }
-  assert.equal(actionCount, 44, 'The suite must account for every exported Server Action.')
+  assert.equal(actionCount, 45, 'The suite must account for every exported Server Action.')
   assert.ok(runDatabaseTests, 'Set SALON_RUN_DB_TESTS=1 to run action integration tests.')
   assert.ok(connectionString, 'DATABASE_URL is required.')
   const databaseUrl = new URL(connectionString)
@@ -224,6 +231,10 @@ test('public booking and every exported Server Action persist through PostgreSQL
       VALUES ($1, 'Managed account', $2, 'receptionist', true)
     `, [managedUserId, emails[4]])
     await db.query(`
+      INSERT INTO account (id, "accountId", "providerId", "userId", password)
+      VALUES ($1, $2, 'credential', $2, $3)
+    `, [`team-account-${runId}`, managedUserId, await hashPassword('initial-password')])
+    await db.query(`
       INSERT INTO session (id, "userId", token, "expiresAt")
       VALUES ($1, $2, $3, now() + interval '1 day')
     `, [`team-session-${runId}`, managedUserId, `team-token-${runId}`])
@@ -232,6 +243,10 @@ test('public booking and every exported Server Action persist through PostgreSQL
     const listedManagedUser = listedUsers.find(({ id }) => id === managedUserId)
     assert.equal(listedManagedUser?.email, emails[4])
     assert.equal('password' in (listedManagedUser ?? {}), false)
+    await assert.rejects(
+      team.setTeamUserPassword({ id: managedUserId, password: 'short' }),
+      /entre 8 y 128 caracteres/,
+    )
 
     const updatedManagedUser = await team.updateTeamUser({
       id: managedUserId,
@@ -258,6 +273,25 @@ test('public booking and every exported Server Action persist through PostgreSQL
       role: 'receptionist',
     })
     assert.equal(demotedManagedUser?.role, 'receptionist')
+    await db.query(`
+      INSERT INTO session (id, "userId", token, "expiresAt")
+      VALUES ($1, $2, $3, now() + interval '1 day')
+    `, [`team-password-session-${runId}`, managedUserId, `team-password-token-${runId}`])
+    await team.setTeamUserPassword({ id: managedUserId, password: 'new-secure-password' })
+    const updatedPassword = await db.query<{ password: string }>(
+      'SELECT password FROM account WHERE "userId" = $1 AND "providerId" = $2',
+      [managedUserId, 'credential'],
+    )
+    assert.ok(updatedPassword.rows[0]?.password)
+    assert.equal(
+      await verifyPassword({ hash: updatedPassword.rows[0].password, password: 'new-secure-password' }),
+      true,
+    )
+    assert.equal(
+      await verifyPassword({ hash: updatedPassword.rows[0].password, password: 'initial-password' }),
+      false,
+    )
+    assert.equal((await db.query('SELECT id FROM session WHERE "userId" = $1', [managedUserId])).rowCount, 0)
     await assert.rejects(
       team.setTeamUserActive({ id: sessionUserId, isActive: false }),
       /No podés bloquear tu propia cuenta/,

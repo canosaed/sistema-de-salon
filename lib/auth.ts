@@ -19,6 +19,9 @@ const trustedOrigins = [
     process.env.V0_BUILD_URL,
     process.env.V0_SANDBOX_URL,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_BRANCH_URL
+      ? `https://${process.env.VERCEL_BRANCH_URL}`
+      : undefined,
     process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
   ].filter((origin): origin is string => Boolean(origin)),
 ]
