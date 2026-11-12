@@ -244,7 +244,7 @@ export default function TeamInvitations({
           </div>
         </section>
 
-        {message && <p role="status" className="rounded-xl border border-[#dedbd3] bg-[#fffdf9] px-4 py-3 text-sm text-[#5f5a52]">{message}</p>}
+        {message && <p role="status" className="bg-[#fffdf9] bg-destructive/10 border border-[#dedbd3] btn-cancel cat-pill px-4 py-3 rounded-xl text-sm">{message}</p>}
         <a href="/" className="justify-self-start text-sm font-semibold text-[#8c7457] underline underline-offset-4">Volver al panel</a>
       </div>
     </main>

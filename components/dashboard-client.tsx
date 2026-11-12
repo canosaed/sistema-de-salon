@@ -120,6 +120,14 @@ export default function DashboardClient({ initialData }: DashboardProps) {
       setIsSigningOut(false)
     }
   }
+
+  //formato de fechas dd/mm/aaaa
+  const formateadorDate = new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
   // Pestaña activa
   const [activeTab, setActiveTab] = useState<
     'Resumen' | 'Agenda' | 'Reservas' | 'Clientes' | 'Servicios' | 'Profesionales' | 'Pagos' | 'Inventario' | 'Reportes' | 'Configuración'
@@ -238,7 +246,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
   const [formPaymentMethod, setFormPaymentMethod] = useState<'cash' | 'transfer' | 'card'>('cash')
 
   // Formulario Cliente
-  const [clientForm, setClientForm] = useState({ id: '', name: '', phone: '', email: '', notes: '' })
+  const [clientForm, setClientForm] = useState({ id: '', name: '', birthDate:'', phone: '', email: '', notes: '' })
 
   // Formulario Pago
   const [paymentAmount, setPaymentAmount] = useState('')
@@ -638,7 +646,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
           setClients((prev) => [created, ...prev])
         }
         setShowClientModal(false)
-        setClientForm({ id: '', name: '', phone: '', email: '', notes: '' })
+        setClientForm({ id: '', name: '', birthDate:'', phone: '', email: '', notes: '' })
       } catch (err: any) {
         alert(err.message)
       }
@@ -1452,7 +1460,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 <button
                   className="primary-button-sm"
                   onClick={() => {
-                    setClientForm({ id: '', name: '', phone: '', email: '', notes: '' })
+                    setClientForm({ id: '', name: '', birthDate:'', phone: '', email: '', notes: '' })
                     setShowClientModal(true)
                   }}
                 >
@@ -1469,11 +1477,12 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 />
               </div>
 
-              <div className="table-responsive">
+              <div className="table-responsive mt-2">
                 <table className="custom-table">
                   <thead>
                     <tr>
                       <th>Nombre</th>
+                      <th>Fecha de cumpleños</th>
                       <th>Teléfono</th>
                       <th>Email</th>
                       <th>Visitas</th>
@@ -1497,6 +1506,13 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                           <Fragment key={c.id}>
                             <tr key={c.id}>
                               <td><b>{c.name}</b></td>
+                              <td>
+                                <i>
+                                  {c.birthDate && !isNaN(new Date(c.birthDate).getTime())
+                                    ? formateadorDate.format(new Date(c.birthDate))
+                                    : "Sin fecha"}
+                                </i>
+                              </td>
                               <td>{c.phone}</td>
                               <td>{c.email || '—'}</td>
                               <td><span className="visits-badge">{c.visits} turnos</span></td>
@@ -1518,6 +1534,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                                       setClientForm({
                                         id: c.id,
                                         name: c.name,
+                                        birthDate: c.birthDate,
                                         phone: c.phone,
                                         email: c.email || '',
                                         notes: c.notes || '',
@@ -2235,8 +2252,8 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 <X size={18} />
               </button>
             </div>
-            {formError && <p className="error-copy nav-badge summary-banner btn-cancel agenda-item-card">{formError}</p>}
-            <form onSubmit={handleCreateInternalAppointment} className="modern-form">
+            {formError && <p className="error-copy bg-[#fffdf9] bg-destructive/10 border border-[#dedbd3] btn-cancel cat-pill px-4 py-3 rounded-xl text-sm">{formError}</p>}
+            <form onSubmit={handleCreateInternalAppointment} className="form-field-group mt-2">
               <div className="form-toggle-segment" role="group" aria-label="Tipo de clienta">
                 <button
                   type="button"
@@ -2296,7 +2313,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                 </div>
               )}
 
-              <div className="input-row">
+              {/* <div className="input-row"> */}
                 <label className="field-group">
                   <span className="field-label">Servicio</span>
                   <select
@@ -2312,9 +2329,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     ))}
                   </select>
                 </label>
-              {/* </div>
 
-              <div className="input-row"> */}
                 <label className="field-group">
                   <span className="field-label">Profesional Responsable</span>
                   <select
@@ -2328,7 +2343,7 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                     ))}
                   </select>
                 </label>
-              </div>
+              {/* </div> */}
 
               <div className="input-row">
                 <label className="field-group">
@@ -2597,6 +2612,15 @@ export default function DashboardClient({ initialData }: DashboardProps) {
                   onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
                   placeholder="Ej. Sofía Martínez"
                 />
+              </label>
+              <label className="field-group">
+                  <span className="field-label">Fecha de Cumpleaños</span>
+                  <input
+                    type="date"
+                    className="field-input"
+                    value={clientForm.birthDate}
+                    onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+                  />
               </label>
               <div className="input-row">
                 <label className="field-group">
