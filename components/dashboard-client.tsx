@@ -32,6 +32,7 @@ import {
   Trash2,
   Check,
   ChevronDown,
+  Gift,
 } from 'lucide-react'
 import {
   getAgendaPeriodRange,
@@ -799,6 +800,10 @@ export default function DashboardClient({ initialData }: DashboardProps) {
         </nav>
 
         <div className="sidebar-footer">
+          {isAdmin && <a href="/cuponera" className="nav-link">
+            <Gift size={18} />
+            <span>Cupones y promociones</span>
+          </a>}
           {isAdmin && <a href="/equipo" className="nav-link">
             <Users size={18} />
             <span>Usuarios y equipo</span>

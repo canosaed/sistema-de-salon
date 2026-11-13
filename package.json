@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/business-logic.test.ts lib/staff-auth.test.ts",
+    "test": "tsx --test lib/business-logic.test.ts lib/coupon-logic.test.ts lib/staff-auth.test.ts",
     "test:db": "tsx --test lib/db-concurrency.test.ts lib/db-crud.test.ts",
     "test:actions": "node --experimental-test-module-mocks --import tsx --test --test-reporter=tap scripts/server-actions.integration.test.ts",
     "test:db:failure": "tsx scripts/db-failure.e2e.ts",

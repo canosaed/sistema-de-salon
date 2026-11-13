@@ -7,6 +7,8 @@ import {
   appointmentServices,
   appointments,
   clients,
+  couponRedemptions,
+  coupons,
   professionalAbsences,
   professionalSchedules,
   professionalSpecialties,
@@ -26,6 +28,7 @@ import {
   parseTimeToMinutes,
 } from '@/lib/business-logic'
 import { SALON_TIME_ZONE } from '@/lib/salon-time'
+import { validateCouponForBooking } from '@/lib/coupon-logic'
 
 const activeAppointmentStatuses = ['pending_confirmation', 'confirmed', 'waiting', 'in_progress']
 
@@ -74,32 +77,7 @@ function getNowInSalonWallClock() {
 async function loadPublicAvailability(params: BookingParams) {
   if (!isValidDate(params.dateStr)) throw new Error('La fecha seleccionada no es válida.')
 
-  const [service] = await db.select().from(services).where(and(
-    eq(services.id, params.serviceId),
-    eq(services.isActive, true),
-    eq(services.allowPublicBooking, true),
-  )).limit(1)
-  if (!service) throw new Error('Servicio no encontrado o no habilitado para reservas públicas.')
-
-  const technique = params.techniqueId
-    ? (await db.select().from(techniques).where(and(
-      eq(techniques.id, params.techniqueId),
-      eq(techniques.serviceId, service.id),
-      eq(techniques.isActive, true),
-    )).limit(1))[0]
-    : undefined
-  if (params.techniqueId && !technique) throw new Error('La técnica seleccionada no está disponible para este servicio.')
-
-  const totals = calculateAppointmentTotals([{
-    serviceId: service.id,
-    name: service.name,
-    durationMinutes: service.durationMinutes,
-    prepMinutes: service.prepMinutes,
-    cleanupMinutes: service.cleanupMinutes,
-    price: Number(service.price),
-    additionalMinutes: technique?.additionalMinutes ?? 0,
-    additionalPrice: Number(technique?.additionalPrice ?? 0),
-  }])
+  const { service, technique, totals } = await loadPublicServicePricing(params)
 
   const professionalLinks = await db.select({ professionalId: professionalServices.professionalId })
     .from(professionalServices)
@@ -223,6 +201,36 @@ async function loadPublicAvailability(params: BookingParams) {
   }
 }
 
+async function loadPublicServicePricing(params: Pick<BookingParams, 'serviceId' | 'techniqueId'>) {
+  const [service] = await db.select().from(services).where(and(
+    eq(services.id, params.serviceId),
+    eq(services.isActive, true),
+    eq(services.allowPublicBooking, true),
+  )).limit(1)
+  if (!service) throw new Error('Servicio no encontrado o no habilitado para reservas públicas.')
+
+  const technique = params.techniqueId
+    ? (await db.select().from(techniques).where(and(
+      eq(techniques.id, params.techniqueId),
+      eq(techniques.serviceId, service.id),
+      eq(techniques.isActive, true),
+    )).limit(1))[0]
+    : undefined
+  if (params.techniqueId && !technique) throw new Error('La técnica seleccionada no está disponible para este servicio.')
+
+  const totals = calculateAppointmentTotals([{
+    serviceId: service.id,
+    name: service.name,
+    durationMinutes: service.durationMinutes,
+    prepMinutes: service.prepMinutes,
+    cleanupMinutes: service.cleanupMinutes,
+    price: Number(service.price),
+    additionalMinutes: technique?.additionalMinutes ?? 0,
+    additionalPrice: Number(technique?.additionalPrice ?? 0),
+  }])
+  return { service, technique, totals }
+}
+
 export async function getPublicBookingCatalog() {
   const [categories, servicesRows, techniquesRows, professionalsRows, professionalLinks, settingsRows, specialtyRows, professionalSpecialtyRows] = await Promise.all([
     db.select().from(serviceCategories).orderBy(asc(serviceCategories.order)),
@@ -286,6 +294,7 @@ export async function createPublicBooking(data: {
   clientPhone: string
   clientEmail?: string
   notes?: string
+  couponCode?: string
 }) {
   const name = data.clientName?.trim()
   const phone = data.clientPhone?.trim()
@@ -325,7 +334,12 @@ export async function createPublicBooking(data: {
 
   const appointmentId = crypto.randomUUID()
   const endDateTime = new Date(startDateTime.getTime() + availability.totals.totalOccupiedDurationMinutes * 60_000)
+  const couponCode = data.couponCode?.trim().toUpperCase()
   let assignedProfessionalId: string | null = null
+  let finalPrice = availability.totals.totalPrice
+  let requiredDeposit = availability.depositAmount
+  let discountAmount = 0
+  let appliedCoupon: typeof coupons.$inferSelect | undefined
 
   await db.transaction(async (tx) => {
     for (const professionalId of eligibleProfessionalIds) {
@@ -345,6 +359,28 @@ export async function createPublicBooking(data: {
       }
     }
     if (!assignedProfessionalId) throw new Error('Ese horario acaba de ser reservado. Elegí otro horario.')
+
+    if (couponCode) {
+      await tx.execute(sql`select id from coupon where lower(code) = ${couponCode.toLowerCase()} for update`)
+      const [coupon] = await tx.select().from(coupons)
+        .where(sql`lower(${coupons.code}) = ${couponCode.toLowerCase()}`)
+        .limit(1)
+      if (!coupon) throw new Error('El código ingresado no es válido.')
+
+      const [usage] = await tx.select({ uses: sql<number>`count(*)::int` })
+        .from(couponRedemptions)
+        .where(eq(couponRedemptions.couponId, coupon.id))
+      discountAmount = validateCouponForBooking({
+        ...coupon,
+        discountValue: Number(coupon.discountValue),
+        minimumPurchase: Number(coupon.minimumPurchase),
+      }, availability.totals.totalPrice, getNowInSalonWallClock().toISOString().slice(0, 10), usage?.uses ?? 0)
+      finalPrice = Math.round((availability.totals.totalPrice - discountAmount + Number.EPSILON) * 100) / 100
+      requiredDeposit = availability.service.depositType === 'fixed'
+        ? Math.min(finalPrice, Number(availability.service.depositValue))
+        : Math.round(finalPrice * Number(availability.service.depositValue) / 100)
+      appliedCoupon = coupon
+    }
 
     const [existingClient] = await tx.select({ id: clients.id }).from(clients).where(eq(clients.phone, phone)).limit(1)
     const clientId = existingClient?.id ?? crypto.randomUUID()
@@ -367,8 +403,8 @@ export async function createPublicBooking(data: {
       startDateTime,
       endDateTime,
       totalDurationMinutes: availability.totals.totalOccupiedDurationMinutes,
-      totalPrice: availability.totals.totalPrice.toFixed(2),
-      requiredDeposit: availability.depositAmount.toFixed(2),
+      totalPrice: finalPrice.toFixed(2),
+      requiredDeposit: requiredDeposit.toFixed(2),
       status: settings?.autoConfirmPublicBookings ? 'confirmed' : 'pending_confirmation',
       paymentStatus: 'pending',
       notes: data.notes?.trim() || 'Reserva online',
@@ -387,11 +423,22 @@ export async function createPublicBooking(data: {
       historicCleanupMinutes: availability.service.cleanupMinutes,
       sequenceOrder: 1,
     })
+    if (appliedCoupon) {
+      await tx.insert(couponRedemptions).values({
+        id: crypto.randomUUID(),
+        couponId: appliedCoupon.id,
+        appointmentId,
+        codeSnapshot: appliedCoupon.code,
+        discountAmount: discountAmount.toFixed(2),
+      })
+    }
     await tx.insert(appointmentHistory).values({
       id: crypto.randomUUID(),
       appointmentId,
       action: 'created_public',
-      details: 'Reserva creada desde el portal público',
+      details: appliedCoupon
+        ? `Reserva creada desde el portal público con cupón ${appliedCoupon.code}`
+        : 'Reserva creada desde el portal público',
     })
   })
 
@@ -408,8 +455,11 @@ export async function createPublicBooking(data: {
       serviceName: availability.service.name,
       professional: assignedProfessional.name,
       totalDurationMinutes: availability.totals.totalOccupiedDurationMinutes,
-      totalPrice: availability.totals.totalPrice,
-      requiredDeposit: availability.depositAmount,
+      originalTotalPrice: availability.totals.totalPrice,
+      discountAmount,
+      couponCode: appliedCoupon?.code ?? null,
+      totalPrice: finalPrice,
+      requiredDeposit,
       status: settings?.autoConfirmPublicBookings ? 'confirmed' : 'pending_confirmation',
     },
     message: '¡Tu reserva ha sido registrada con éxito!',

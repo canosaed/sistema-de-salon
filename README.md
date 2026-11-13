@@ -16,6 +16,7 @@ La plataforma cuenta con un **panel de administración centralizado** para el eq
 - **Catálogo de Servicios y Técnicas:** Configuración de servicios agrupados por categorías (Manos, Pies, Pestañas), duraciones netas, tiempos de preparación y limpieza (desinfección), precios en ARS, políticas de cancelación y tipos de seña (fija o porcentual).
 - **Gestión de Profesionales:** Administración del equipo de especialistas, horarios laborales, descansos intermedios y ausencias programadas.
 - **Finanzas y Pagos:** Registro de señas, pagos parciales, pagos completos y devoluciones (reembolsos) en efectivo, transferencia bancaria o tarjeta.
+- **Cupones y promociones:** Creación de códigos porcentuales o por monto fijo, vigencia, compra mínima y límite de usos; aplicación y validación del descuento en reservas públicas.
 - **Control de Inventario Básico:** Monitoreo de stock de materiales e insumos, registro de movimientos (ingresos, consumos, ajustes, mermas) y alertas automáticas ante stock crítico inferior al mínimo.
 - **Reportes:** Consolidado de turnos finalizados, cancelaciones e ingresos del período.
 - **Sincronización Híbrida y Modo Offline:** Almacenamiento local mediante IndexedDB con cola de operaciones pendientes y detección de conectividad (`online`/`offline`), manteniendo la nube como fuente de verdad.

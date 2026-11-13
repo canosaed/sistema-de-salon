@@ -43,6 +43,13 @@
       "when": 1794367000000,
       "tag": "0005_bitter_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794505318373,
+      "tag": "0006_bouncy_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   Calendar,
   Check,
 } from 'lucide-react'
+import { getPublicCouponAction } from '@/app/actions/coupons'
 import { checkPublicAvailability, createPublicBooking } from '@/app/actions/booking'
 import { getSalonDateString } from '@/lib/salon-time'
 
@@ -28,6 +29,13 @@ interface PublicBookingProps {
     professionals: any[]
     settings: any
   }
+}
+
+type CouponQuote = {
+  code: string
+  description: string
+  discountAmount: number
+  totalPrice: number
 }
 
 // Helper formatting functions
@@ -74,6 +82,10 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
   const [clientEmail, setClientEmail] = useState('')
   const [clientNotes, setClientNotes] = useState('')
   const [acceptPolicies, setAcceptPolicies] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [couponQuote, setCouponQuote] = useState<CouponQuote | null>(null)
+  const [couponMessage, setCouponMessage] = useState('')
+  const [isCouponPending, setIsCouponPending] = useState(false)
 
   // Estados de carga y error
   const [isPending, startTransition] = useTransition()
@@ -113,6 +125,8 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
     setSelectedServiceId(serviceId)
     setSelectedTechniqueId('')
     setSelectedTime('')
+    setCouponQuote(null)
+    setCouponMessage('')
     setStep(2)
     fetchAvailability(selectedDate, selectedProfessionalId, serviceId)
   }
@@ -132,7 +146,30 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
   const handleTechniqueChange = (techId: string) => {
     setSelectedTechniqueId(techId)
     setSelectedTime('')
+    setCouponQuote(null)
+    setCouponMessage('')
     fetchAvailability(selectedDate, selectedProfessionalId, selectedServiceId, techId)
+  }
+
+  const handleApplyCoupon = async () => {
+    if (isCouponPending) return
+    setIsCouponPending(true)
+    setCouponMessage('')
+    try {
+      const quote = await getPublicCouponAction({
+        code: couponCode,
+        serviceId: selectedServiceId,
+        techniqueId: selectedTechniqueId || undefined,
+      })
+      setCouponQuote(quote)
+      setCouponCode(quote.code)
+      setCouponMessage(`${quote.description}: descuento de $${quote.discountAmount.toLocaleString('es-AR')} ARS aplicado.`)
+    } catch (error) {
+      setCouponQuote(null)
+      setCouponMessage(error instanceof Error ? error.message : 'No se pudo validar el cupón.')
+    } finally {
+      setIsCouponPending(false)
+    }
   }
 
   const handleConfirmReservation = (e: React.FormEvent) => {
@@ -184,6 +221,7 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
           clientPhone: phone,
           clientEmail: clientEmail.trim() || undefined,
           notes: clientNotes.trim() || undefined,
+          couponCode: couponQuote?.code,
         })
         setConfirmedBooking(res.appointment)
         setStep(4)
@@ -196,8 +234,13 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
   // Precios y señas calculadas
   const basePrice = Number(activeService?.price || 0)
   const additionalPrice = Number(activeTechnique?.additionalPrice || 0)
-  const totalPrice = basePrice + additionalPrice
-  const depositAmount = availabilityDetails?.depositAmount || Math.round(totalPrice * 0.3)
+  const originalTotalPrice = basePrice + additionalPrice
+  const totalPrice = couponQuote?.totalPrice ?? originalTotalPrice
+  const depositAmount = couponQuote
+    ? activeService?.depositType === 'fixed'
+      ? Math.min(totalPrice, Number(activeService?.depositValue || 0))
+      : Math.round(totalPrice * Number(activeService?.depositValue || 30) / 100)
+    : availabilityDetails?.depositAmount || Math.round(totalPrice * 0.3)
   const balancePending = Math.max(0, totalPrice - depositAmount)
 
   // Generador del calendario para el Datepicker
@@ -601,6 +644,48 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
             <div className="pricing-breakdown">
               <div className="breakdown-row">
                 <span>Precio del tratamiento:</span>
+                <strong>${originalTotalPrice.toLocaleString('es-AR')} ARS</strong>
+              </div>
+              <div className="coupon-entry">
+                <label htmlFor="booking-coupon" className="field-label">¿Tenés un código de descuento?</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    id="booking-coupon"
+                    value={couponCode}
+                    onChange={(event) => {
+                      setCouponCode(event.target.value.toUpperCase())
+                      setCouponQuote(null)
+                      setCouponMessage('')
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void handleApplyCoupon()
+                      }
+                    }}
+                    placeholder="Ingresá tu código"
+                    className="modern-input"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void handleApplyCoupon()}
+                    disabled={isCouponPending || !couponCode.trim()}
+                  >
+                    {isCouponPending ? 'Validando...' : 'Aplicar'}
+                  </button>
+                </div>
+                {couponMessage && <p className="muted" role="status">{couponMessage}</p>}
+              </div>
+              {couponQuote && (
+                <div className="breakdown-row">
+                  <span>Cupón {couponQuote.code}:</span>
+                  <strong>−${couponQuote.discountAmount.toLocaleString('es-AR')} ARS</strong>
+                </div>
+              )}
+              <div className="breakdown-row">
+                <span>Total con descuento:</span>
                 <strong>${totalPrice.toLocaleString('es-AR')} ARS</strong>
               </div>
               <div className="breakdown-row highlight-deposit">
@@ -742,6 +827,9 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
             <div><span>Tratamiento:</span> <b>{confirmedBooking.serviceName}</b></div>
             <div><span>Profesional:</span> <b>{confirmedBooking.professional}</b></div>
             <div><span>Duración estimada:</span> <b>{confirmedBooking.totalDurationMinutes} min</b></div>
+            {confirmedBooking.discountAmount > 0 && (
+              <div><span>Descuento {confirmedBooking.couponCode}:</span> <b>−${Number(confirmedBooking.discountAmount).toLocaleString('es-AR')} ARS</b></div>
+            )}
             <div><span>Total:</span> <b>${Number(confirmedBooking.totalPrice).toLocaleString('es-AR')} ARS</b></div>
             <div><span>Seña a abonar:</span> <b>${Number(confirmedBooking.requiredDeposit).toLocaleString('es-AR')} ARS</b></div>
             <div><span>Estado:</span> <span className="status-badge">{confirmedBooking.status === 'confirmed' ? 'Confirmado' : 'Pendiente de confirmación'}</span></div>
@@ -762,6 +850,9 @@ export default function PublicBookingClient({ initialCatalog }: PublicBookingPro
               setSelectedServiceId('')
               setSelectedTechniqueId('')
               setSelectedTime('')
+              setCouponCode('')
+              setCouponQuote(null)
+              setCouponMessage('')
               setConfirmedBooking(null)
             }}
           >

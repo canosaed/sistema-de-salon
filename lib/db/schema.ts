@@ -251,6 +251,34 @@ export const appointmentHistory = pgTable("appointment_history", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 })
 
+export const coupons = pgTable("coupon", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull(),
+  description: text("description").notNull(),
+  discountType: text("discountType").notNull(), // percentage o fixed
+  discountValue: numeric("discountValue", { precision: 12, scale: 2 }).notNull(),
+  minimumPurchase: numeric("minimumPurchase", { precision: 12, scale: 2 }).notNull().default("0"),
+  startDate: text("startDate").notNull(),
+  endDate: text("endDate").notNull(),
+  maxUses: integer("maxUses"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("coupon_code_lower_unique").on(sql`lower(${table.code})`),
+])
+
+export const couponRedemptions = pgTable("coupon_redemption", {
+  id: text("id").primaryKey(),
+  couponId: text("couponId").notNull().references(() => coupons.id, { onDelete: "restrict" }),
+  appointmentId: text("appointmentId").notNull().references(() => appointments.id, { onDelete: "cascade" }),
+  codeSnapshot: text("codeSnapshot").notNull(),
+  discountAmount: numeric("discountAmount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("coupon_redemption_appointment_unique").on(table.appointmentId),
+])
+
 // ----------------------------------------------------
 // 6. FINANZAS Y PAGOS
 // ----------------------------------------------------
